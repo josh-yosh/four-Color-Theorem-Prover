@@ -1,0 +1,8 @@
+{
+  "name": "four-color-theorem-prover",
+  "version-string": "0.1.0",
+  "dependencies": [
+    "glfw3",
+    "glad"
+  ]
+}

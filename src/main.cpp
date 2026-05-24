@@ -1,0 +1,62 @@
+#define GLFW_INCLUDE_NONE
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
+#include <iostream>
+
+
+void framebuffer_size_callback(GLFWwindow* window, int width, int height){
+glViewport(0, 0, width, height);
+}
+
+struct Engine {
+    int failedGlfwWindow(GLFWwindow* window) {
+        if (window == NULL){
+            std::cout << "Failed to create GLFW window" << std::endl;
+            glfwTerminate();
+            return -1;
+        }
+    }
+
+    void run() {
+        glfwInit();
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+
+        GLFWwindow* window = glfwCreateWindow(800, 600, "LearnOpenGL", NULL, NULL);
+        if (failedGlfwWindow(window) == -1) return;
+
+        glfwMakeContextCurrent(window);
+
+        if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)){
+            std::cout << "Failed to initialize GLAD" << std::endl;
+            return;
+        }
+        
+        glViewport(0, 0, 800, 600);
+        glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+
+        // render loop
+        while(!glfwWindowShouldClose(window)){
+            // input
+            // processInput(window);
+            // rendering commands here
+            // ...
+            // check and call events and swap the buffers
+            glfwPollEvents();
+            glfwSwapBuffers(window);
+        }
+
+        glfwTerminate();
+    }
+};
+
+
+int main() {
+    Engine engine;
+
+    engine.run();
+    return 0;
+}
+

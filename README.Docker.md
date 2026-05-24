@@ -1,3 +1,15 @@
+### To download packages
+vcpkg install --triplet=arm64-osx-dynamic 
+
+### To make cmake file, build on macos-arm
+cmake --preset macos-arm        
+
+### to build
+cmake --build --preset macos-arm-debug
+
+### to run
+./build/macos-arm-debug/Debug/my_executable
+
 ### Building and running your application
 
 When you're ready, start your application by running:
