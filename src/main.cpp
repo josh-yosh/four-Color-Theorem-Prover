@@ -13,11 +13,22 @@ struct Point {
 };
 
 struct Engine {
+    const int WINDOW_WIDTH = 800;
+    const int WINDOW_HEIGHT = 600;
+
     int failedGlfwWindow(GLFWwindow* window) {
         if (window == NULL){
             std::cout << "Failed to create GLFW window" << std::endl;
             glfwTerminate();
             return -1;
+        }
+    }
+
+    void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
+        if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+            double xpos, ypos;
+            glfwGetCursorPos(window, &xpos, &ypos);
+            std::cout << "Mouse clicked at: (" << xpos << ", " << ypos << ")" << std::endl;
         }
     }
 
@@ -42,7 +53,7 @@ struct Engine {
         glfwSetMouseButtonCallback(window, mouse_button_callback);
         
         // for resizing the window
-        glViewport(0, 0, 800, 600);
+        glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
         glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
         // render loop
