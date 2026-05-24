@@ -8,6 +8,10 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height){
 glViewport(0, 0, width, height);
 }
 
+struct Point {
+    float x, y;
+};
+
 struct Engine {
     int failedGlfwWindow(GLFWwindow* window) {
         if (window == NULL){
@@ -33,7 +37,11 @@ struct Engine {
             std::cout << "Failed to initialize GLAD" << std::endl;
             return;
         }
+
+        // Register the mouse callback
+        glfwSetMouseButtonCallback(window, mouse_button_callback);
         
+        // for resizing the window
         glViewport(0, 0, 800, 600);
         glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
