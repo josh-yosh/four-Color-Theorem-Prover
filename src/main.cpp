@@ -4,8 +4,8 @@
 #include <iostream>
 #include <vector>
 
-const int WINDOW_WIDTH = 800;
-const int WINDOW_HEIGHT = 600;
+int windowWidth = 800;
+int windowHeight = 600;
 
 struct Point {
     float x, y;
@@ -21,22 +21,42 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height){
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
         double xpos, ypos;
-        // Get the cursor position relative to the window
         glfwGetCursorPos(window, &xpos, &ypos);
 
-        // Convert Screen Coordinates to OpenGL NDC
-        float ndcX = (2.0f * xpos) /   WINDOW_WIDTH - 1.0f;
-        float ndcY = 1.0f - (2.0f * ypos) / WINDOW_HEIGHT;
+        // Fetch the virtual screen size (e.g., 800x600) which matches xpos/ypos
+        int click_width, click_height;
+        glfwGetWindowSize(window, &click_width, &click_height);
 
-        // Save the point
+        float ndcX = (2.0f * (float)xpos) / (float)click_width - 1.0f;
+        float ndcY = 1.0f - (2.0f * (float)ypos) / (float)click_height;
+
         clickedPoints.push_back({ndcX, ndcY});
-        
+
         std::cout << "Clicked at Screen: (" << xpos << ", " << ypos 
-                << ") -> NDC: (" << ndcX << ", " << ndcY << ")\n";
+                  << ") -> NDC: (" << ndcX << ", " << ndcY << ")\n";
     }
 }
 
+//for resizing the window
+void window_size_callback(GLFWwindow* window, int width, int height) {
+    windowWidth = width;
+    windowHeight = height;
+}
+
 struct Engine {
+    const char *fragmentShaderSource = "#version 330 core\n"
+        "out vec4 FragColor;\n"
+        "void main()\n"
+        "{\n"
+        "   FragColor = vec4(1.0f, 1.0f, 1.0f, 1.0f);\n"
+        "}\n\0";
+
+    const char *vertexShaderSource = "#version 330 core\n"
+        "layout (location = 0) in vec2 aPos;\n"
+        "void main()\n"
+        "{\n"
+        " gl_Position = vec4(aPos.x, aPos.y, 0.0, 1.0);\n"
+        "}\0";
 
     int failedGlfwWindow(GLFWwindow* window) {
         if (window == NULL){
@@ -62,13 +82,6 @@ struct Engine {
         glfwTerminate();
     }
 
-    const char *vertexShaderSource = "#version 330 core\n"
-        "layout (location = 0) in vec2 aPos;\n"
-        "void main()\n"
-        "{\n"
-        " gl_Position = vec4(aPos.x, aPos.y, 0.0, 1.0);\n"
-        "}\0";
-
     void vertexShaderErrorCheck(unsigned int vertexShader) {
         int success;
         char infoLog[512];
@@ -85,13 +98,6 @@ struct Engine {
         glCompileShader(vertexShader);
         vertexShaderErrorCheck(vertexShader);
     }
-
-    const char *fragmentShaderSource = "#version 330 core\n"
-    "out vec4 FragColor;\n"
-    "void main()\n"
-    "{\n"
-    "   FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
-    "}\n\0";
 
     void fragmentShaderErrorCheck(unsigned int fragmentShader) {
         int success;
@@ -143,28 +149,25 @@ struct Engine {
 
         GLFWwindow* window = glfwCreateWindow(800, 600, "LearnOpenGL", NULL, NULL);
         if (failedGlfwWindow(window) == -1) return;
-
+        
+        //makes resizing the window possible and sets the viewport to the new dimensions
         glfwMakeContextCurrent(window);
+        glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+        glfwSetMouseButtonCallback(window, mouse_button_callback); // Register the mouse callback
+        glfwSetWindowSizeCallback(window, window_size_callback); // Register the window size callback
+        glfwGetWindowSize(window, &windowWidth, &windowHeight); // Query the actual physical pixels for the initial OpenGL canvas
 
         if (failedGladLoader() == -1) return;
 
-        // Register the mouse callback
-        glfwSetMouseButtonCallback(window, mouse_button_callback);
-        
-        // for resizing the window
-        glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
-        glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+        int fbWidth, fbHeight;
+        glfwGetFramebufferSize(window, &fbWidth, &fbHeight);
+        glViewport(0, 0, fbWidth, fbHeight);
 
-        // Compile vertex shader
-        unsigned int vertexShader;
-        vertexShaderSetup(vertexShader);
-
-        // Compile fragment shader
-        unsigned int fragmentShader;
-        fragmentShaderSetup(fragmentShader);
-
-        // Link shaders into a program
-        unsigned int shaderProgram = createShaderProgram(vertexShader, fragmentShader);
+        //shader setup
+        unsigned int vertexShader, fragmentShader;
+        vertexShaderSetup(vertexShader); // Compile vertex shader
+        fragmentShaderSetup(fragmentShader); // Compile fragment shader
+        unsigned int shaderProgram = createShaderProgram(vertexShader, fragmentShader); // Link shaders into a program
 
         //creating VAO and VBO for rendering points
         unsigned int VAO, VBO;
