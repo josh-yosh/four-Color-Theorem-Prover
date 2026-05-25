@@ -2,19 +2,41 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
+#include <vector>
 
-
-void framebuffer_size_callback(GLFWwindow* window, int width, int height){
-glViewport(0, 0, width, height);
-}
+const int WINDOW_WIDTH = 800;
+const int WINDOW_HEIGHT = 600;
 
 struct Point {
     float x, y;
 };
 
+std::vector<Point> clickedPoints;
+
+void framebuffer_size_callback(GLFWwindow* window, int width, int height){
+    glViewport(0, 0, width, height);
+}
+
+// Mouse button callback function
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+        double xpos, ypos;
+        // Get the cursor position relative to the window
+        glfwGetCursorPos(window, &xpos, &ypos);
+
+        // Convert Screen Coordinates to OpenGL NDC
+        float ndcX = (2.0f * xpos) /   WINDOW_WIDTH - 1.0f;
+        float ndcY = 1.0f - (2.0f * ypos) / WINDOW_HEIGHT;
+
+        // Save the point
+        clickedPoints.push_back({ndcX, ndcY});
+        
+        std::cout << "Clicked at Screen: (" << xpos << ", " << ypos 
+                << ") -> NDC: (" << ndcX << ", " << ndcY << ")\n";
+    }
+}
+
 struct Engine {
-    const int WINDOW_WIDTH = 800;
-    const int WINDOW_HEIGHT = 600;
 
     int failedGlfwWindow(GLFWwindow* window) {
         if (window == NULL){
@@ -22,14 +44,94 @@ struct Engine {
             glfwTerminate();
             return -1;
         }
+        return 0;
     }
 
-    void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
-        if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
-            double xpos, ypos;
-            glfwGetCursorPos(window, &xpos, &ypos);
-            std::cout << "Mouse clicked at: (" << xpos << ", " << ypos << ")" << std::endl;
+    int failedGladLoader() {
+        if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)){
+            std::cout << "Failed to initialize GLAD" << std::endl;
+            return -1;
         }
+        return 0;
+    }
+
+    void cleanup(unsigned int VAO, unsigned int VBO) {
+        glDeleteVertexArrays(1, &VAO);
+        glDeleteBuffers(1, &VBO);
+
+        glfwTerminate();
+    }
+
+    const char *vertexShaderSource = "#version 330 core\n"
+        "layout (location = 0) in vec2 aPos;\n"
+        "void main()\n"
+        "{\n"
+        " gl_Position = vec4(aPos.x, aPos.y, 0.0, 1.0);\n"
+        "}\0";
+
+    void vertexShaderErrorCheck(unsigned int vertexShader) {
+        int success;
+        char infoLog[512];
+        glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
+        if (!success) {
+            glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
+            std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
+        }
+    }
+
+    void vertexShaderSetup(unsigned int &vertexShader) {
+        vertexShader = glCreateShader(GL_VERTEX_SHADER);
+        glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
+        glCompileShader(vertexShader);
+        vertexShaderErrorCheck(vertexShader);
+    }
+
+    const char *fragmentShaderSource = "#version 330 core\n"
+    "out vec4 FragColor;\n"
+    "void main()\n"
+    "{\n"
+    "   FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
+    "}\n\0";
+
+    void fragmentShaderErrorCheck(unsigned int fragmentShader) {
+        int success;
+        char infoLog[512];
+        glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
+        if (!success) {
+            glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
+            std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
+        }
+    }
+
+    void fragmentShaderSetup(unsigned int &fragmentShader) {
+        fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+        glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
+        glCompileShader(fragmentShader);
+        fragmentShaderErrorCheck(fragmentShader);
+    }
+
+    void shaderProgramErrorCheck(unsigned int shaderProgram) {
+        int success;
+        char infoLog[512];
+        glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+        if (!success) {
+            glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
+            std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
+        }
+    }
+
+    unsigned int createShaderProgram(unsigned int vertexShader, unsigned int fragmentShader) {
+        unsigned int program = glCreateProgram();
+        glAttachShader(program, vertexShader);
+        glAttachShader(program, fragmentShader);
+        glLinkProgram(program);
+        shaderProgramErrorCheck(program);
+
+        // Once linked into the program, we can delete the individual shader objects
+        glDeleteShader(vertexShader);
+        glDeleteShader(fragmentShader);
+        
+        return program;
     }
 
     void run() {
@@ -44,10 +146,7 @@ struct Engine {
 
         glfwMakeContextCurrent(window);
 
-        if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)){
-            std::cout << "Failed to initialize GLAD" << std::endl;
-            return;
-        }
+        if (failedGladLoader() == -1) return;
 
         // Register the mouse callback
         glfwSetMouseButtonCallback(window, mouse_button_callback);
@@ -56,19 +155,60 @@ struct Engine {
         glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
         glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
+        // Compile vertex shader
+        unsigned int vertexShader;
+        vertexShaderSetup(vertexShader);
+
+        // Compile fragment shader
+        unsigned int fragmentShader;
+        fragmentShaderSetup(fragmentShader);
+
+        // Link shaders into a program
+        unsigned int shaderProgram = createShaderProgram(vertexShader, fragmentShader);
+
+        //creating VAO and VBO for rendering points
+        unsigned int VAO, VBO;
+        glGenVertexArrays(1, &VAO);
+        glGenBuffers(1, &VBO);
+
+        glBindVertexArray(VAO);
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+
+        // Position attribute
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Point), (void*)0);
+        glEnableVertexAttribArray(0);
+
+        // Make points larger so they are easy to see
+        glPointSize(10.0f);
+
         // render loop
         while(!glfwWindowShouldClose(window)){
-            // input
-            // processInput(window);
-            // rendering commands here
-            // ...
-            // check and call events and swap the buffers
-            glfwPollEvents();
+            glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT);
+
+            // [CRITICAL] If we have points, orphan/sub the buffer with new data
+            bool hasPoints = !clickedPoints.empty();
+            if (hasPoints) {
+                glUseProgram(shaderProgram);
+                glBindBuffer(GL_ARRAY_BUFFER, VBO);
+                // Upload the dynamic vector data to the GPU
+                glBufferData(GL_ARRAY_BUFFER, clickedPoints.size() * sizeof(Point), &clickedPoints[0], GL_DYNAMIC_DRAW);
+
+                // Bind shaders here if youc are using custom ones
+                glBindVertexArray(VAO);
+                // Draw all the points we've collected so far
+                glDrawArrays(GL_POINTS, 0, clickedPoints.size());
+            }
+
             glfwSwapBuffers(window);
+            glfwPollEvents();
         }
 
-        glfwTerminate();
+        // Cleanup
+        glDeleteProgram(shaderProgram);
+        cleanup(VAO, VBO);
     }
+
 };
 
 
