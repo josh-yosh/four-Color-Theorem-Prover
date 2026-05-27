@@ -3,18 +3,21 @@
 #include <GLFW/glfw3.h>
 #include <iostream>
 #include <vector>
+#include "Point.h"
 
 int windowWidth = 800;
 int windowHeight = 600;
-
-struct Point {
-    float x, y;
-};
 
 std::vector<Point> clickedPoints;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height){
     glViewport(0, 0, width, height);
+}
+
+//for resizing the window
+void window_size_callback(GLFWwindow* window, int width, int height) {
+    windowWidth = width;
+    windowHeight = height;
 }
 
 // Mouse button callback function
@@ -33,15 +36,10 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
         clickedPoints.push_back({ndcX, ndcY});
 
         std::cout << "Clicked at Screen: (" << xpos << ", " << ypos 
-                  << ") -> NDC: (" << ndcX << ", " << ndcY << ")\n";
+                << ") -> NDC: (" << ndcX << ", " << ndcY << ")\n";
     }
 }
 
-//for resizing the window
-void window_size_callback(GLFWwindow* window, int width, int height) {
-    windowWidth = width;
-    windowHeight = height;
-}
 
 struct Engine {
     const char *fragmentShaderSource = "#version 330 core\n"
@@ -126,6 +124,24 @@ struct Engine {
         }
     }
 
+    void linkingVAOandVBO(unsigned int &VAO, unsigned int &VBO) {
+        glGenVertexArrays(1, &VAO);
+        glGenBuffers(1, &VBO);
+
+        glBindVertexArray(VAO);
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    }
+
+    void glfwHintInit() {
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+        #ifdef __APPLE__
+            glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+        #endif
+    }
+
     unsigned int createShaderProgram(unsigned int vertexShader, unsigned int fragmentShader) {
         unsigned int program = glCreateProgram();
         glAttachShader(program, vertexShader);
@@ -142,10 +158,7 @@ struct Engine {
 
     void run() {
         glfwInit();
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+        glfwHintInit();
 
         GLFWwindow* window = glfwCreateWindow(800, 600, "LearnOpenGL", NULL, NULL);
         if (failedGlfwWindow(window) == -1) return;
@@ -171,11 +184,7 @@ struct Engine {
 
         //creating VAO and VBO for rendering points
         unsigned int VAO, VBO;
-        glGenVertexArrays(1, &VAO);
-        glGenBuffers(1, &VBO);
-
-        glBindVertexArray(VAO);
-        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        linkingVAOandVBO(VAO, VBO);
 
         // Position attribute
         glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Point), (void*)0);
@@ -189,7 +198,7 @@ struct Engine {
             glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
             glClear(GL_COLOR_BUFFER_BIT);
 
-            // [CRITICAL] If we have points, orphan/sub the buffer with new data
+            // If we have points, orphan/sub the buffer with new data
             bool hasPoints = !clickedPoints.empty();
             if (hasPoints) {
                 glUseProgram(shaderProgram);
