@@ -4,6 +4,7 @@
 #include <iostream>
 #include <vector>
 #include "Point.h"
+#include "buttonControls.cpp"
 
 int windowWidth = 800;
 int windowHeight = 600;
@@ -22,22 +23,10 @@ void window_size_callback(GLFWwindow* window, int width, int height) {
 
 // Mouse button callback function
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
-    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
-        double xpos, ypos;
-        glfwGetCursorPos(window, &xpos, &ypos);
+    //to add a new point to the screen
+    newPointClick(window, button, action, clickedPoints); 
 
-        // Fetch the virtual screen size (e.g., 800x600) which matches xpos/ypos
-        int click_width, click_height;
-        glfwGetWindowSize(window, &click_width, &click_height);
-
-        float ndcX = (2.0f * (float)xpos) / (float)click_width - 1.0f;
-        float ndcY = 1.0f - (2.0f * (float)ypos) / (float)click_height;
-
-        clickedPoints.push_back({ndcX, ndcY});
-
-        std::cout << "Clicked at Screen: (" << xpos << ", " << ypos 
-                << ") -> NDC: (" << ndcX << ", " << ndcY << ")\n";
-    }
+    
 }
 
 
