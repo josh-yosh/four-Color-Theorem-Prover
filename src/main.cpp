@@ -5,11 +5,16 @@
 #include <vector>
 #include "Point.h"
 #include "buttonControls.cpp"
+using namespace std;
 
 int windowWidth = 800;
 int windowHeight = 600;
 
-std::vector<Point> clickedPoints;
+// Keep these global so your render loop can see them
+vector<Point> clickedPoints;
+set<Point> currentConnection; 
+set<set<Point>> allConnections;
+
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height){
     glViewport(0, 0, width, height);
@@ -23,10 +28,13 @@ void window_size_callback(GLFWwindow* window, int width, int height) {
 
 // Mouse button callback function
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
-    //to add a new point to the screen
-    newPointClick(window, button, action, clickedPoints); 
+    if(ConnectingPoints(window, button, action, clickedPoints, currentConnection, allConnections)) {
+        // Connection handled, no further action needed
+    } else {
+        // If not connecting points, check for new point creation
+        newPointClick(window, button, action, clickedPoints);
+    }
 
-    
 }
 
 

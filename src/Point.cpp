@@ -1,26 +1,24 @@
 #include "Point.h"
+#include <iostream>
 
-struct Point {
-    double x;
-    double y;
+// Implement the constructor
+Point::Point(float x_val, float y_val) : x(x_val), y(y_val) {}
 
-    static const double DEFAULT_X; // A value that is unlikely to be a valid point coordinate
-    static const double DEFAULT_Y; // A value that is unlikely to be a
+// Implement the print method
+void Point::print() const {
+    std::cout << "Point(" << x << ", " << y << ")\n";
+}
 
-    // Optional: A constructor to make creating points easier
-    Point(double x_val = DEFAULT_X, double y_val = DEFAULT_Y);
-    
-    // Optional: A method declaration
-    void print() const;
+// Implement equality operators
+bool Point::operator==(const Point& other) const {
+    return x == other.x && y == other.y;
+}
 
-    // overload equality operators for easy comparison
-    bool operator==(const Point& other) const {
-        return x == other.x && y == other.y;
-    }
-    bool operator!=(const Point& other) const {
-        return !(*this == other);
-    }
+bool Point::operator!=(const Point& other) const {
+    return !(*this == other);
+}
 
-    // Check if the point is at the default (0,0)
-    bool isDefault() const { return x == DEFAULT_X && y == DEFAULT_Y; }
-};
+// Implement the default check
+bool Point::isDefault() const { 
+    return x == 0.0 && y == 0.0; 
+}

@@ -1,3 +1,17 @@
+### 5/30/26
+1. const on a function makes it so that that function does not mutate anything
+2. in order for another function to see a struct funtion, always add to .h file. That's the one that is visible to other files.
+3. int& pass: by copy
+4. const int&: pass by copy and no mutations 
+5. all mousefunctions shouhld be called in the callback, not main
+
+BUG: glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Point), (void*)0);
+1. told openGL that I was passing 2
+
+**The Quick Rule of Thumb**
+Keep double for any variables interacting with glfwGetCursorPos or local intermediate math to maintain precision.
+Keep float inside the Point struct so that the memory layout perfectly aligns with your OpenGL hardware buffers.
+
 ### 5/24/26
 1. you can't pass a member function of a class directly into a C-style function pointer that expects a regular, global function (or a static method).
 

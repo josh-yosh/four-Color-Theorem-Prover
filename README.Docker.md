@@ -8,7 +8,7 @@ cmake --preset macos-arm
 cmake --build --preset macos-arm-debug
 
 ### to run
-./build/macos-arm-debug/Debug/my_executable
+./build/macos-arm/Debug/my_executable
 
 ### Building and running your application
 
