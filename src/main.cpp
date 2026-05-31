@@ -14,6 +14,7 @@ int windowHeight = 600;
 vector<Point> clickedPoints;
 set<Point> currentConnection; 
 set<set<Point>> allConnections;
+bool isConnecting = false; // Track if we are in the process of connecting points
 
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height){
@@ -28,9 +29,9 @@ void window_size_callback(GLFWwindow* window, int width, int height) {
 
 // Mouse button callback function
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
-    if(ConnectingPoints(window, button, action, clickedPoints, currentConnection, allConnections)) {
-        // Connection handled, no further action needed
-    } else {
+    if(ConnectingPoints(window, button, action, clickedPoints, currentConnection, allConnections, isConnecting)) {
+        cout << isConnecting << endl;
+    } else if (!isConnecting){
         // If not connecting points, check for new point creation
         newPointClick(window, button, action, clickedPoints);
     }
@@ -189,16 +190,17 @@ struct Engine {
 
         // Make points larger so they are easy to see
         glPointSize(10.0f);
+        glLineWidth(2.0f); // Set line width for connections
 
         // render loop
         while(!glfwWindowShouldClose(window)){
             glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
             glClear(GL_COLOR_BUFFER_BIT);
+            glUseProgram(shaderProgram);
 
             // If we have points, orphan/sub the buffer with new data
             bool hasPoints = !clickedPoints.empty();
             if (hasPoints) {
-                glUseProgram(shaderProgram);
                 glBindBuffer(GL_ARRAY_BUFFER, VBO);
                 // Upload the dynamic vector data to the GPU
                 glBufferData(GL_ARRAY_BUFFER, clickedPoints.size() * sizeof(Point), &clickedPoints[0], GL_DYNAMIC_DRAW);
@@ -207,6 +209,47 @@ struct Engine {
                 glBindVertexArray(VAO);
                 // Draw all the points we've collected so far
                 glDrawArrays(GL_POINTS, 0, clickedPoints.size());
+            }
+
+            //if we have an active connection, draw a line between the two points
+            if(isConnecting){
+                double ndcX, ndcY;
+                getCursorPositionInNDC(window, ndcX, ndcY);
+                vector<Point> currentLine = {*(currentConnection.begin()), Point(ndcX, ndcY)};
+
+                glBindBuffer(GL_ARRAY_BUFFER, VBO);
+                // Upload the dynamic vector data to the GPU
+                glBufferData(GL_ARRAY_BUFFER, currentLine.size() * sizeof(Point), &currentLine[0], GL_DYNAMIC_DRAW);
+
+                // Bind shaders here if youc are using custom ones
+                glBindVertexArray(VAO);
+                // Draw all the points we've collected so far
+                glDrawArrays(GL_LINES, 0, currentLine.size());
+
+            }
+
+            bool hasConnections = !allConnections.empty();
+            if(hasConnections){
+                // 1. Flatten all connections into one continuous vector first
+                vector<Point> linesToDraw;
+                for (const auto& connection : allConnections) {
+                    for (const auto& point : connection) {
+                        linesToDraw.push_back(point);
+                    }
+                }
+
+                // 2. Only perform GPU operations if there is actually data to draw
+                if (!linesToDraw.empty()) {
+                    // Bind everything ONCE
+                    glBindVertexArray(VAO);
+                    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+                    
+                    // Upload ALL line data at once
+                    glBufferData(GL_ARRAY_BUFFER, linesToDraw.size() * sizeof(Point), &linesToDraw[0], GL_DYNAMIC_DRAW);
+
+                    // Draw ALL lines with a single GPU command
+                    glDrawArrays(GL_LINES, 0, linesToDraw.size());
+                }
             }
 
             glfwSwapBuffers(window);

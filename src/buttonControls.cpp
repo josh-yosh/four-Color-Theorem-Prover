@@ -39,15 +39,17 @@ void newPointClick(GLFWwindow* window, int button, int action, vector<Point> &cl
 }
 
 //checks if it's left clicked or released, and if it's a click near an existing point, then it will connect the two points
-bool ConnectingPoints(GLFWwindow* window, int button, int action, vector<Point> &clickedPoints, set<Point> &currentConnection, set<set<Point>> &allConnections) {
+bool ConnectingPoints(GLFWwindow* window, int button, int action, vector<Point> &clickedPoints, set<Point> &currentConnection, set<set<Point>> &allConnections, bool &isConnecting) {
     bool isLeftClick = (button == GLFW_MOUSE_BUTTON_LEFT) && (action == GLFW_PRESS);
     bool isLeftRelease = (button == GLFW_MOUSE_BUTTON_LEFT) && (action == GLFW_RELEASE);
 
     bool activeConnectionExists = hasActiveConnection(currentConnection); // Check if we already have a connection in progress
+    bool returnValue = false;
 
     if (isLeftClick && !activeConnectionExists) {
         double ndcX, ndcY;
         getCursorPositionInNDC(window, ndcX, ndcY);
+        isConnecting = true; // We are in the process of connecting points
 
         optional<Point> nearestPointOpt = getNearestPoint(window, clickedPoints);
         if (nearestPointOpt) {
@@ -57,12 +59,14 @@ bool ConnectingPoints(GLFWwindow* window, int button, int action, vector<Point> 
             if (currentConnection.size() == 2) {
                 allConnections.insert(currentConnection); // Store the completed connection
                 currentConnection.clear(); // Reset for the next connection
+                isConnecting = false; // Connection completed
             }
-            return true; // Connection handled
+            returnValue = false; // Connection handled
 
         } else {
             noNearbyPointMessage();
-            return false; // No connection made
+            isConnecting = false;
+            returnValue = false; // No connection made
         }
     } else if (isLeftRelease && activeConnectionExists) {
         double ndcX, ndcY;
@@ -73,17 +77,22 @@ bool ConnectingPoints(GLFWwindow* window, int button, int action, vector<Point> 
             Point nearestPoint = nearestPointOpt.value();
             getNearestPointMessage(nearestPoint);
             currentConnection.insert(nearestPoint); // Add the nearest point to the connection set
+            allConnections.insert(currentConnection); // Store the completed connection
             currentConnection.clear(); // Clear the connection state after release regardless of success
-
-            return true; // Connection handled
+            returnValue = true; // Connection handled
         } else {
             noNearbyPointMessage();
             currentConnection.clear(); // Clear the connection state on release regardless of success
-
-            return false; // No connection made
+            returnValue = false; // No connection made
         }
+
+        isConnecting = false; // Connection completed
+    } else {
+        isConnecting = false; // Connection completed
+        returnValue = false; // Not a connection event
     }
-    return false; // Not a connection event
+
+    return returnValue;
 }
 
 bool hasActiveConnection(const set<Point>& activeConnections) {
