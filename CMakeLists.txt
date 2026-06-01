@@ -18,10 +18,21 @@ find_package(glad CONFIG REQUIRED)
 # 3. Define Targets (Your Libraries & Executables)
 # ==========================================
 # First, create your Point library (assuming Point.cpp/h are in your src folder)
-add_library(PointLib src/Point.cpp src/Point.h)
+add_library(PointLib 
+    src/Point.cpp 
+    src/Point.h
+    src/buttonControls.h
+    src/buttonControls.cpp
+    src/lineAndPointLogic.h
+    src/lineAndPointLogic.cpp
+)
 
 # Next, create your main application executable
-add_executable(my_executable src/main.cpp)
+add_executable(my_executable 
+    src/main.cpp 
+    src/buttonControls.cpp 
+    src/lineAndPointLogic.cpp
+)
 
 # ==========================================
 # 4. Target Configuration & Linking
@@ -31,8 +42,12 @@ target_include_directories(PointLib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 # Link everything to your main executable 
 # (Notice we use 'my_executable' consistently here)
+
+target_link_libraries(PointLib PUBLIC
+    glfw
+    glad::glad
+)
+
 target_link_libraries(my_executable PRIVATE 
-    glfw 
-    glad::glad 
     PointLib
 )

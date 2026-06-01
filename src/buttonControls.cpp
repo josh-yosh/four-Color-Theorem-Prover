@@ -5,6 +5,7 @@
 #include <vector>
 #include <optional>
 #include <set>
+#include "lineAndPointLogic.h"
 #include "Point.h"
 using namespace std;
 
@@ -20,7 +21,7 @@ optional<Point> getNearestPoint(GLFWwindow* window, const vector<Point>& clicked
 void convertScreenToNDC(GLFWwindow* window, double screenX, double screenY, double& ndcX, double& ndcY);
 
 //add a new point to the screen
-void newPointClick(GLFWwindow* window, int button, int action, vector<Point> &clickedPoints) {
+void newPointClick(GLFWwindow* window, int button, int action, vector<Point> &clickedPoints, set<set<Point>> &allConnections, unordered_map<set<set<Point>>, optional<Point>, NestedSetPointHash>& intersectionPoints) {
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
         double xpos, ypos;
         glfwGetCursorPos(window, &xpos, &ypos);
@@ -33,8 +34,24 @@ void newPointClick(GLFWwindow* window, int button, int action, vector<Point> &cl
         double ndcX, ndcY;
         convertScreenToNDC(window, xpos, ypos, ndcX, ndcY);
 
-        clickedPoints.push_back(Point(ndcX, ndcY));
-        pointClickedMessage(xpos, ypos, ndcX, ndcY);
+        optional<Point> pointOnLine = nullopt;
+        for (const auto& connection : allConnections) {
+            vector<Point> connPoints(connection.begin(), connection.end());
+            optional<Point> potentialPoint = pointOnLineSegment(Point(ndcX, ndcY), connPoints[0], connPoints[1]);
+            if (potentialPoint != nullopt) {
+                pointOnLine = potentialPoint;
+                break;
+            }
+        }
+
+        if (pointOnLine) {
+            clickedPoints.push_back(*pointOnLine);
+            splitLineIntoSegments({*pointOnLine, Point(ndcX, ndcY)}, {Point(ndcX, ndcY), *pointOnLine}, intersectionPoints, clickedPoints, allConnections);
+            return;
+        } else {
+            clickedPoints.push_back(Point(ndcX, ndcY));
+            pointClickedMessage(xpos, ypos, ndcX, ndcY);
+        }
     }
 }
 
@@ -73,7 +90,8 @@ bool ConnectingPoints(GLFWwindow* window, int button, int action, vector<Point> 
         getCursorPositionInNDC(window, ndcX, ndcY);
 
         optional<Point> nearestPointOpt = getNearestPoint(window, clickedPoints);
-        if (nearestPointOpt) {
+        bool isSamePoint = (nearestPointOpt && currentConnection.count(nearestPointOpt.value()) > 0);
+        if (nearestPointOpt && !isSamePoint) {
             Point nearestPoint = nearestPointOpt.value();
             getNearestPointMessage(nearestPoint);
             currentConnection.insert(nearestPoint); // Add the nearest point to the connection set

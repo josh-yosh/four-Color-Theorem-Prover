@@ -3,8 +3,12 @@
 #include <GLFW/glfw3.h>
 #include <iostream>
 #include <vector>
+#include <unordered_map>
+#include <optional>
+#include <set>
 #include "Point.h"
-#include "buttonControls.cpp"
+#include "buttonControls.h"
+#include "lineAndPointLogic.h"
 using namespace std;
 
 int windowWidth = 800;
@@ -15,6 +19,7 @@ vector<Point> clickedPoints;
 set<Point> currentConnection; 
 set<set<Point>> allConnections;
 bool isConnecting = false; // Track if we are in the process of connecting points
+unordered_map<set<set<Point>>, optional<Point>, NestedSetPointHash> intersectionPoints; // Store intersection points
 
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height){
@@ -33,13 +38,14 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
         cout << isConnecting << endl;
     } else if (!isConnecting){
         // If not connecting points, check for new point creation
-        newPointClick(window, button, action, clickedPoints);
+        newPointClick(window, button, action, clickedPoints, allConnections, intersectionPoints);
     }
 
 }
 
 
 struct Engine {
+    
     const char *fragmentShaderSource = "#version 330 core\n"
         "out vec4 FragColor;\n"
         "void main()\n"
@@ -250,7 +256,19 @@ struct Engine {
                     // Draw ALL lines with a single GPU command
                     glDrawArrays(GL_LINES, 0, linesToDraw.size());
                 }
+
+                for (const auto& connection : allConnections) {
+                    for (const auto& connection2 : allConnections) {
+                        bool sameConnection = (connection == connection2);
+                        bool alreadyChecked = (intersectionPoints.find({connection, connection2}) != intersectionPoints.end());
+                        if (!sameConnection && !alreadyChecked) {
+                            getIntersectionPoint(connection, connection2, intersectionPoints, clickedPoints, allConnections);
+                        }
+                    }
+                }
             }
+
+            
 
             glfwSwapBuffers(window);
             glfwPollEvents();
