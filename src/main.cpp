@@ -17,9 +17,9 @@ int windowHeight = 600;
 // Keep these global so your render loop can see them
 vector<Point> clickedPoints;
 set<Point> currentConnection; 
-set<set<Point>> allConnections;
+set<set<Point>> allEdges;
+set<Point> intersectionPoints; // Store intersection points
 bool isConnecting = false; // Track if we are in the process of connecting points
-unordered_map<set<set<Point>>, optional<Point>, NestedSetPointHash> intersectionPoints; // Store intersection points
 
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height){
@@ -34,11 +34,11 @@ void window_size_callback(GLFWwindow* window, int width, int height) {
 
 // Mouse button callback function
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
-    if(ConnectingPoints(window, button, action, clickedPoints, currentConnection, allConnections, isConnecting)) {
+    if(ConnectingPoints(window, button, action, clickedPoints, currentConnection, allEdges, intersectionPoints, isConnecting)) {
         cout << isConnecting << endl;
     } else if (!isConnecting){
         // If not connecting points, check for new point creation
-        newPointClick(window, button, action, clickedPoints, allConnections, intersectionPoints);
+        newPointClick(window, button, action, clickedPoints, allEdges);
     }
 
 }
@@ -234,11 +234,11 @@ struct Engine {
 
             }
 
-            bool hasConnections = !allConnections.empty();
+            bool hasConnections = !allEdges.empty();
             if(hasConnections){
                 // 1. Flatten all connections into one continuous vector first
                 vector<Point> linesToDraw;
-                for (const auto& connection : allConnections) {
+                for (const auto& connection : allEdges) {
                     for (const auto& point : connection) {
                         linesToDraw.push_back(point);
                     }
@@ -257,15 +257,7 @@ struct Engine {
                     glDrawArrays(GL_LINES, 0, linesToDraw.size());
                 }
 
-                for (const auto& connection : allConnections) {
-                    for (const auto& connection2 : allConnections) {
-                        bool sameConnection = (connection == connection2);
-                        bool alreadyChecked = (intersectionPoints.find({connection, connection2}) != intersectionPoints.end());
-                        if (!sameConnection && !alreadyChecked) {
-                            getIntersectionPoint(connection, connection2, intersectionPoints, clickedPoints, allConnections);
-                        }
-                    }
-                }
+                
             }
 
             

@@ -21,7 +21,7 @@ optional<Point> getNearestPoint(GLFWwindow* window, const vector<Point>& clicked
 void convertScreenToNDC(GLFWwindow* window, double screenX, double screenY, double& ndcX, double& ndcY);
 
 //add a new point to the screen
-void newPointClick(GLFWwindow* window, int button, int action, vector<Point> &clickedPoints, set<set<Point>> &allConnections, unordered_map<set<set<Point>>, optional<Point>, NestedSetPointHash>& intersectionPoints) {
+void newPointClick(GLFWwindow* window, int button, int action, vector<Point> &clickedPoints, set<set<Point>> &allEdges) {
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
         double xpos, ypos;
         glfwGetCursorPos(window, &xpos, &ypos);
@@ -34,10 +34,11 @@ void newPointClick(GLFWwindow* window, int button, int action, vector<Point> &cl
         double ndcX, ndcY;
         convertScreenToNDC(window, xpos, ypos, ndcX, ndcY);
 
+        //checks if the click is near an existing line, if so, it will add a point on the line and split the line into two segments
         optional<Point> pointOnLine = nullopt;
-        for (const auto& connection : allConnections) {
+        for (const auto& connection : allEdges) {
             vector<Point> connPoints(connection.begin(), connection.end());
-            optional<Point> potentialPoint = pointOnLineSegment(Point(ndcX, ndcY), connPoints[0], connPoints[1]);
+            optional<Point> potentialPoint = closestPointOnLine(Point(ndcX, ndcY), connPoints[0], connPoints[1]);
             if (potentialPoint != nullopt) {
                 pointOnLine = potentialPoint;
                 break;
@@ -46,8 +47,6 @@ void newPointClick(GLFWwindow* window, int button, int action, vector<Point> &cl
 
         if (pointOnLine) {
             clickedPoints.push_back(*pointOnLine);
-            splitLineIntoSegments({*pointOnLine, Point(ndcX, ndcY)}, {Point(ndcX, ndcY), *pointOnLine}, intersectionPoints, clickedPoints, allConnections);
-            return;
         } else {
             clickedPoints.push_back(Point(ndcX, ndcY));
             pointClickedMessage(xpos, ypos, ndcX, ndcY);
@@ -56,7 +55,7 @@ void newPointClick(GLFWwindow* window, int button, int action, vector<Point> &cl
 }
 
 //checks if it's left clicked or released, and if it's a click near an existing point, then it will connect the two points
-bool ConnectingPoints(GLFWwindow* window, int button, int action, vector<Point> &clickedPoints, set<Point> &currentConnection, set<set<Point>> &allConnections, bool &isConnecting) {
+bool ConnectingPoints(GLFWwindow* window, int button, int action, vector<Point> &clickedPoints, set<Point> &currentConnection, set<set<Point>> &allEdges, set<Point> &intersectionPoints, bool &isConnecting) {
     bool isLeftClick = (button == GLFW_MOUSE_BUTTON_LEFT) && (action == GLFW_PRESS);
     bool isLeftRelease = (button == GLFW_MOUSE_BUTTON_LEFT) && (action == GLFW_RELEASE);
 
@@ -74,7 +73,7 @@ bool ConnectingPoints(GLFWwindow* window, int button, int action, vector<Point> 
             getNearestPointMessage(nearestPoint);
             currentConnection.insert(nearestPoint); // Add the nearest point to the connection set
             if (currentConnection.size() == 2) {
-                allConnections.insert(currentConnection); // Store the completed connection
+                allEdges.insert(currentConnection); // Store the completed connection
                 currentConnection.clear(); // Reset for the next connection
                 isConnecting = false; // Connection completed
             }
@@ -95,7 +94,35 @@ bool ConnectingPoints(GLFWwindow* window, int button, int action, vector<Point> 
             Point nearestPoint = nearestPointOpt.value();
             getNearestPointMessage(nearestPoint);
             currentConnection.insert(nearestPoint); // Add the nearest point to the connection set
-            allConnections.insert(currentConnection); // Store the completed connection
+            allEdges.insert(currentConnection); // Store the completed connection
+            set<set<Point>> edgesToRemove; // To store new edges after splitting
+            set<set<Point>> edgesToAdd; // To store new edges after splitting
+
+            for (const auto& connection : allEdges) {
+                if (connection != currentConnection) {
+                    optional<Point> intersectionPoint = getIntersectionPoint(connection, currentConnection);
+                    if (intersectionPoint.has_value()) {
+                        splitLineIntoSegments(connection, *intersectionPoint, edgesToAdd);
+                        clickedPoints.push_back(*intersectionPoint); // Add the intersection point to the clicked points for rendering
+                        intersectionPoints.insert(*intersectionPoint);
+                        edgesToRemove.insert(connection); // Mark the original edge for removal
+                    } 
+                }
+            }
+            
+            if(intersectionPoints.size() > 0){
+                breakLineIntoSegments(currentConnection, clickedPoints, edgesToAdd);
+                edgesToRemove.insert(currentConnection); // Mark the original edge for removal
+            }
+
+            // Remove original edges after processing all intersections to avoid modifying the set while iterating
+            for (const auto& edge : edgesToRemove) {
+                allEdges.erase(edge);
+            }
+            for (const auto& edge : edgesToAdd) {
+                allEdges.insert(edge);
+            }
+
             currentConnection.clear(); // Clear the connection state after release regardless of success
             returnValue = true; // Connection handled
         } else {

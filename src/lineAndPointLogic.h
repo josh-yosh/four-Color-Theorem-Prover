@@ -8,20 +8,15 @@
 using namespace std;
 
 // Declaration of the intersection calculation function
-void getIntersectionPoint(
-    const set<Point>& line1, 
-    const set<Point>& line2, 
-    unordered_map<set<set<Point>>, optional<Point>, NestedSetPointHash>& intersectionPoints,
-    vector<Point>& clickedPoints,
-    set<set<Point>>& allConnections
-);
+optional<Point> getIntersectionPoint(const set<Point>& line1, const set<Point>& line2);
 
-optional<Point> pointOnLineSegment(const Point& p, const Point& p1, const Point& p2);
+optional<Point> closestPointOnLine(const Point& p, const Point& p1, const Point& p2);
 
-void splitLineIntoSegments(const set<Point>& line1,
-    const set<Point>& line2,
-    unordered_map<set<set<Point>>, optional<Point>, NestedSetPointHash>& intersectionPoints,
-    vector<Point>& clickedPoints, set<set<Point>>& allConnections);
+void splitLineIntoSegments(const set<Point>& line, Point getIntersectionPoint, set<set<Point>>& allEdges);
+
+void breakLineIntoSegments(const set<Point>& line, vector<Point> points, set<set<Point>>& allEdges);
+
+bool isPointOnLineSegment(const Point& p, const set<Point>& line);
 
 bool pointWithinSegments(const Point& p, const Point& p1, const Point& p2);
 
