@@ -12,9 +12,9 @@ optional<Point> getIntersectionPoint(const set<Point>& line1, const set<Point>& 
 
 optional<Point> closestPointOnLine(const Point& p, const Point& p1, const Point& p2);
 
-void splitLineIntoSegments(const set<Point>& line, Point getIntersectionPoint, set<set<Point>>& allEdges);
+void splitLineIntoSegments(const set<Point>& line, Point intersectionPoint, set<set<Point>>& allEdges);
 
-void breakLineIntoSegments(const set<Point>& line, vector<Point> points, set<set<Point>>& allEdges);
+void breakLineIntoSegments(const set<Point>& line, vector<Point> intersectionPoints, set<set<Point>>& allEdges);
 
 bool isPointOnLineSegment(const Point& p, const set<Point>& line);
 

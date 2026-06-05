@@ -94,25 +94,30 @@ bool ConnectingPoints(GLFWwindow* window, int button, int action, vector<Point> 
             Point nearestPoint = nearestPointOpt.value();
             getNearestPointMessage(nearestPoint);
             currentConnection.insert(nearestPoint); // Add the nearest point to the connection set
-            allEdges.insert(currentConnection); // Store the completed connection
             set<set<Point>> edgesToRemove; // To store new edges after splitting
             set<set<Point>> edgesToAdd; // To store new edges after splitting
 
             for (const auto& connection : allEdges) {
-                if (connection != currentConnection) {
-                    optional<Point> intersectionPoint = getIntersectionPoint(connection, currentConnection);
-                    if (intersectionPoint.has_value()) {
-                        splitLineIntoSegments(connection, *intersectionPoint, edgesToAdd);
-                        clickedPoints.push_back(*intersectionPoint); // Add the intersection point to the clicked points for rendering
-                        intersectionPoints.insert(*intersectionPoint);
-                        edgesToRemove.insert(connection); // Mark the original edge for removal
-                    } 
-                }
+                optional<Point> intersectionPoint = getIntersectionPoint(connection, currentConnection);
+                if (intersectionPoint.has_value()) {
+                    splitLineIntoSegments(connection, *intersectionPoint, edgesToAdd);
+                    clickedPoints.push_back(*intersectionPoint); // Add the intersection point to the clicked points for rendering
+                    intersectionPoints.insert(*intersectionPoint);
+                    edgesToRemove.insert(connection); // Mark the original edge for removal
+                } 
+                
             }
             
+            //print intersection points for debugging
+            for (const auto& ip : intersectionPoints) {
+                cout << "Intersection Point: (" << ip.x << ", " << ip.y << ")\n";
+            }
+
+            vector<Point> dupIntersectionPoints(intersectionPoints.begin(), intersectionPoints.end()); // Create a copy to iterate over
             if(intersectionPoints.size() > 0){
-                breakLineIntoSegments(currentConnection, clickedPoints, edgesToAdd);
+                breakLineIntoSegments(currentConnection, dupIntersectionPoints, edgesToAdd);
                 edgesToRemove.insert(currentConnection); // Mark the original edge for removal
+                intersectionPoints.clear(); // Clear intersection points after processing
             }
 
             // Remove original edges after processing all intersections to avoid modifying the set while iterating
@@ -123,6 +128,7 @@ bool ConnectingPoints(GLFWwindow* window, int button, int action, vector<Point> 
                 allEdges.insert(edge);
             }
 
+            allEdges.insert(currentConnection); // Store the completed connection
             currentConnection.clear(); // Clear the connection state after release regardless of success
             returnValue = true; // Connection handled
         } else {

@@ -15,46 +15,53 @@ optional<Point> getIntersectionPoint(const set<Point>& line1, const set<Point>& 
     float a1, b1, c1, a2, b2, c2, determinant;
     getConstantsFromLine(line1, line2, a1, b1, c1, a2, b2, c2, determinant);
 
-    bool collinear = (determinant == 0);
-    bool intersectionExists = !collinear && pointWithinSegments(Point{(b2 * c1 - b1 * c2) / determinant, (a1 * c2 - a2 * c1) / determinant}, p1, p2) && pointWithinSegments(Point{(b2 * c1 - b1 * c2) / determinant, (a1 * c2 - a2 * c1) / determinant}, p3, p4);
 
+    bool collinear = (determinant == 0);
+    bool intersectionExists;
+    float x, y;
+    if (!collinear){
+        x = (b2 * c1 - b1 * c2) / determinant;
+        y = (a1 * c2 - a2 * c1) / determinant;
+        Point intersectionPoint{x, y};
+        bool intersectionPointNotEndpoint = (intersectionPoint != p1 && intersectionPoint != p2 && intersectionPoint != p3 && intersectionPoint != p4);
+        intersectionExists = pointWithinSegments(intersectionPoint, p1, p2) && pointWithinSegments(intersectionPoint, p3, p4) && intersectionPointNotEndpoint;
+    }
+     
     if (intersectionExists) {
-        float x = (b2 * c1 - b1 * c2) / determinant;
-        float y = (a1 * c2 - a2 * c1) / determinant;
+        
         return Point{x, y};
     } else {
         return std::nullopt; // Lines are parallel or coincident, no single intersection point
     }
 }
 
-void splitLineIntoSegments(const set<Point>& line, Point getIntersectionPoint, set<set<Point>>& allEdges) {
+void splitLineIntoSegments(const set<Point>& line, Point intersectionPoint, set<set<Point>>& allEdges) {
     vector<Point> points(line.begin(), line.end());
     Point p1 = points[0];
     Point p2 = points[1];
 
+    if (p1 == intersectionPoint || p2 == intersectionPoint) {
+        // Intersection is at an endpoint — no split needed, original line stands
+        return;
+    }
+
     // Create two new segments: (p1, intersection) and (intersection, p2)
-    set<Point> segment1 = {p1, getIntersectionPoint};
-    set<Point> segment2 = {getIntersectionPoint, p2};
+    set<Point> segment1 = {p1, intersectionPoint};
+    set<Point> segment2 = {intersectionPoint, p2};
 
     // Add the new segments to the collection of all edges
     allEdges.insert(segment1);
     allEdges.insert(segment2);
 }
 
-void breakLineIntoSegments(const set<Point>& line, vector<Point> points, set<set<Point>>& allEdges) {
+void breakLineIntoSegments(const set<Point>& line, vector<Point> intersectionPoints, set<set<Point>>& allEdges) {
+    if (line.empty()) return;
+
     // Convert sets to vectors for easier access
-    vector<Point> pointsOnLine = {line.begin(), line.end()};
+    vector<Point> pointsOnLine = intersectionPoints;
+    pointsOnLine.insert(pointsOnLine.end(), line.begin(), line.end());
 
-    for (const auto& point : points) {
-        if (isPointOnLineSegment(point, line)) {
-            pointsOnLine.push_back(point);
-        }
-    }
-
-    // Sort the points along the line segment
-    vector<Point> linePoints(line.begin(), line.end());
-    Point p1 = linePoints[0];
-    Point p2 = linePoints[1];
+    Point p1 = *line.begin();
 
     sort(pointsOnLine.begin(), pointsOnLine.end(), [&](const Point& a, const Point& b) {
         float da = (a.x - p1.x) * (a.x - p1.x) + (a.y - p1.y) * (a.y - p1.y);
