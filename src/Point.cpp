@@ -1,6 +1,11 @@
 #include "Point.h"
 #include <iostream>
 
+bool nearlyEqual(const Point& a, const Point& b) {
+    constexpr float eps = 1e-3f;
+    return fabs(a.x - b.x) < eps && fabs(a.y - b.y) < eps;
+}
+
 // Implement the constructor
 Point::Point(float x_val, float y_val) : x(x_val), y(y_val) {}
 
@@ -11,14 +16,14 @@ void Point::print() const {
 
 // Implement equality operators
 bool Point::operator==(const Point& other) const {
-    return x == other.x && y == other.y;
+    return nearlyEqual(*this, other);
 }
 
 bool Point::operator!=(const Point& other) const {
-    return !(*this == other);
+    return !nearlyEqual(*this, other);
 }
 
 // Implement the default check
 bool Point::isDefault() const { 
-    return x == 0.0 && y == 0.0; 
+    return nearlyEqual(*this, Point(0.0, 0.0)); 
 }

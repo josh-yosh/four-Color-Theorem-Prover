@@ -12,13 +12,14 @@
 using namespace std;
 
 // Declaration of the intersection calculation function
+
 optional<Point> getIntersectionPoint(const set<Point>& line1, const set<Point>& line2);
 
 optional<Point> closestPointOnLine(const Point& p, const Point& p1, const Point& p2);
 
 void splitLineIntoSegments(const set<Point>& line, Point intersectionPoint, set<set<Point>>& allEdges);
 
-void breakLineIntoSegments(const set<Point>& line, vector<Point> intersectionPoints, set<set<Point>>& allEdges);
+void breakLineIntoSegments(const set<Point>& line, set<Point> intersectionPoints, set<set<Point>>& allEdges);
 
 bool isPointOnLineSegment(const Point& p, const set<Point>& line);
 
@@ -28,7 +29,7 @@ void getConstantsFromLine(const set<Point>& line1, const set<Point>& line2, floa
 
 void getPointsFromLine(const set<Point>& line1, const set<Point>& line2, Point& p1, Point& p2, Point& p3, Point& p4);
 
-optional<Point> getNearestPoint(GLFWwindow* window, const vector<Point>& clickedPoints);
+optional<Point> getNearestPoint(GLFWwindow* window, const set<Point>& clickedPoints);
 
 void convertScreenToNDC(GLFWwindow* window, double screenX, double screenY, double& ndcX, double& ndcY);
 
@@ -37,6 +38,9 @@ void getCursorPositionInNDC(GLFWwindow* window, double& ndcX, double& ndcY);
 bool validClick(const Point& point, const Point& click);
 
 bool hasActiveConnection(const set<Point>& activeConnections);
+
+optional<Point> pointIsNearOtherPoints(const Point& point, const set<Point>& otherPoints);
+
 
 
 #endif // LINE_AND_POINT_LOGIC_H

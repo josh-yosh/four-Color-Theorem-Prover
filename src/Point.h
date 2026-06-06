@@ -33,7 +33,11 @@ struct Point {
         double dy = y - other.y;
         return dx * dx + dy * dy;
     }
+
+
 };
+
+bool nearlyEqual(const Point& a, const Point& b);
 
 namespace std {
     template <>

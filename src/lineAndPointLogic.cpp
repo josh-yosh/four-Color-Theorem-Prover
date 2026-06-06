@@ -6,7 +6,8 @@
 #include "Point.h"
 using namespace std;
 
-constexpr double CLICK_THRESHOLD = 0.05;
+constexpr double CLICK_THRESHOLD = 0.025;
+
 
 optional<Point> getIntersectionPoint(const set<Point>& line1, const set<Point>& line2) {
     // Convert sets to vectors for easier access
@@ -17,18 +18,17 @@ optional<Point> getIntersectionPoint(const set<Point>& line1, const set<Point>& 
 
 
     bool collinear = (determinant == 0);
-    bool intersectionExists;
+    bool intersectionExists = false;
     float x, y;
     if (!collinear){
         x = (b2 * c1 - b1 * c2) / determinant;
         y = (a1 * c2 - a2 * c1) / determinant;
         Point intersectionPoint{x, y};
-        bool intersectionPointNotEndpoint = (intersectionPoint != p1 && intersectionPoint != p2 && intersectionPoint != p3 && intersectionPoint != p4);
+        bool intersectionPointNotEndpoint = !nearlyEqual(intersectionPoint, p1) && !nearlyEqual(intersectionPoint, p2) && !nearlyEqual(intersectionPoint, p3) && !nearlyEqual(intersectionPoint, p4);
         intersectionExists = pointWithinSegments(intersectionPoint, p1, p2) && pointWithinSegments(intersectionPoint, p3, p4) && intersectionPointNotEndpoint;
     }
      
     if (intersectionExists) {
-        
         return Point{x, y};
     } else {
         return std::nullopt; // Lines are parallel or coincident, no single intersection point
@@ -40,7 +40,7 @@ void splitLineIntoSegments(const set<Point>& line, Point intersectionPoint, set<
     Point p1 = points[0];
     Point p2 = points[1];
 
-    if (p1 == intersectionPoint || p2 == intersectionPoint) {
+    if (nearlyEqual(p1, intersectionPoint) || nearlyEqual(p2, intersectionPoint)) {
         // Intersection is at an endpoint — no split needed, original line stands
         return;
     }
@@ -54,20 +54,22 @@ void splitLineIntoSegments(const set<Point>& line, Point intersectionPoint, set<
     allEdges.insert(segment2);
 }
 
-void breakLineIntoSegments(const set<Point>& line, vector<Point> intersectionPoints, set<set<Point>>& allEdges) {
+void breakLineIntoSegments(const set<Point>& line, set<Point> intersectionPoints, set<set<Point>>& allEdges) {
     if (line.empty()) return;
 
-    // Convert sets to vectors for easier access
-    vector<Point> pointsOnLine = intersectionPoints;
+    vector<Point> pointsOnLine(intersectionPoints.begin(), intersectionPoints.end());
     pointsOnLine.insert(pointsOnLine.end(), line.begin(), line.end());
 
+    cout << "points on line before sorting: " << pointsOnLine.size() << "\n";
     Point p1 = *line.begin();
 
     sort(pointsOnLine.begin(), pointsOnLine.end(), [&](const Point& a, const Point& b) {
         float da = (a.x - p1.x) * (a.x - p1.x) + (a.y - p1.y) * (a.y - p1.y);
         float db = (b.x - p1.x) * (b.x - p1.x) + (b.y - p1.y) * (b.y - p1.y);
         return da < db;
-    });
+    }); 
+
+    pointsOnLine.erase(std::unique(pointsOnLine.begin(), pointsOnLine.end()), pointsOnLine.end());
 
     // Create segments between consecutive points
     for(int i = 0; i < pointsOnLine.size() - 1; i++) {
@@ -84,7 +86,7 @@ bool isPointOnLineSegment(const Point& p, const set<Point>& line) {
     // Vector from p1 to p2 using float
     float dx = p2.x - p1.x;
     float dy = p2.y - p1.y;
-    float epsilon = 0.05f; // Tolerance for "closeness" to the line segment
+    float epsilon = 0.025f; // Tolerance for "closeness" to the line segment
     
     // Length squared of the line segment
     float segmentLengthSq = dx * dx + dy * dy;
@@ -92,7 +94,7 @@ bool isPointOnLineSegment(const Point& p, const set<Point>& line) {
     // If p1 and p2 are the exact same point
     if (segmentLengthSq == 0.0f) {
         if (std::sqrt(p.distanceSquared(p1)) <= epsilon) {
-            return true;
+            return false;
         }
         return false;
     }
@@ -111,14 +113,32 @@ bool isPointOnLineSegment(const Point& p, const set<Point>& line) {
     
     // Check if the distance to the closest point is within our tolerance
     float distSq = p.distanceSquared(closestPoint);
-    return distSq <= epsilon * epsilon;
+    bool lessThanEpsilon = distSq <= epsilon * epsilon;
+    bool withinSegmentBounds = pointWithinSegments(closestPoint, p1, p2);
+    bool pointIsNotEndpoint = !nearlyEqual(closestPoint, p1) && !nearlyEqual(closestPoint, p2);
+    if(lessThanEpsilon && withinSegmentBounds && pointIsNotEndpoint){
+        cout << "closest point: (" << closestPoint.x << ", " << closestPoint.y << ")\n";
+        cout << "p1: (" << p1.x << ", " << p1.y << "), p2: (" << p2.x << ", " << p2.y << ")\n";
+    }
+    return lessThanEpsilon && withinSegmentBounds && pointIsNotEndpoint;
 }
 
 
 
 bool pointWithinSegments(const Point& p, const Point& p1, const Point& p2) {
-    return (min(p1.x, p2.x) <= p.x && p.x <= max(p1.x, p2.x)) &&
-           (min(p1.y, p2.y) <= p.y && p.y <= max(p1.y, p2.y));
+    float dx = p2.x - p1.x;
+    float dy = p2.y - p1.y;
+
+    float t;
+    if (fabs(dx) > fabs(dy)) {
+        t = (p.x - p1.x) / dx;
+    } else if (fabs(dy) > 0) {
+        t = (p.y - p1.y) / dy;
+    } else {
+        return false; // degenerate segment
+    }
+
+    return t >= 0.0f && t <= 1.0f;
 }
 
 void getPointsFromLine(const set<Point>& line1, const set<Point>& line2, Point& p1, Point& p2, Point& p3, Point& p4) {
@@ -222,7 +242,7 @@ void getCursorPositionInNDC(GLFWwindow* window, double& ndcX, double& ndcY) {
 }
 
 // Returns the first point that is near the click position, or nullopt if none are close enough
-optional<Point> getNearestPoint(GLFWwindow* window, const vector<Point>& clickedPoints) {
+optional<Point> getNearestPoint(GLFWwindow* window, const set<Point>& clickedPoints) {
     double ndcX, ndcY;
     getCursorPositionInNDC(window, ndcX, ndcY);
 
@@ -235,5 +255,14 @@ optional<Point> getNearestPoint(GLFWwindow* window, const vector<Point>& clicked
 
     // Return "no point" safely
     return nullopt; 
+}
+
+optional<Point> pointIsNearOtherPoints(const Point& point, const set<Point>& otherPoints) {
+    for (const auto& other : otherPoints) {
+        if (validClick(point, other)) {
+            return other; // Found a nearby point
+        }
+    }
+    return nullopt; // No nearby points found
 }
 

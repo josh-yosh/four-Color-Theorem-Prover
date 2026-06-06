@@ -15,7 +15,8 @@ int windowWidth = 800;
 int windowHeight = 600;
 
 // Keep these global so your render loop can see them
-vector<Point> clickedPoints;
+set<Point> clickedPoints;
+vector<Point> pointsToRender;
 set<Point> currentConnection; 
 set<set<Point>> allEdges;
 set<Point> intersectionPoints; // Store intersection points
@@ -207,14 +208,16 @@ struct Engine {
             // If we have points, orphan/sub the buffer with new data
             bool hasPoints = !clickedPoints.empty();
             if (hasPoints) {
+                pointsToRender.assign(clickedPoints.begin(), clickedPoints.end()); // Convert set to vector for rendering
+
                 glBindBuffer(GL_ARRAY_BUFFER, VBO);
                 // Upload the dynamic vector data to the GPU
-                glBufferData(GL_ARRAY_BUFFER, clickedPoints.size() * sizeof(Point), &clickedPoints[0], GL_DYNAMIC_DRAW);
+                glBufferData(GL_ARRAY_BUFFER, pointsToRender.size() * sizeof(Point), &pointsToRender[0], GL_DYNAMIC_DRAW);
 
                 // Bind shaders here if youc are using custom ones
                 glBindVertexArray(VAO);
                 // Draw all the points we've collected so far
-                glDrawArrays(GL_POINTS, 0, clickedPoints.size());
+                glDrawArrays(GL_POINTS, 0, pointsToRender.size());
             }
 
             //if we have an active connection, draw a line between the two points

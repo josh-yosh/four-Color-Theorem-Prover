@@ -1,3 +1,8 @@
+### 6/5/26
+1. have to figure out how to connect to existing point if it exists for intersection
+2. figuring out if point inbetween segments had to do nearly equal due to float division.
+
+
 ### 5/31/26
 1. you have to write your own hash function for unordered_maps
 2. need to update library in cmake file whenever importing .h file
