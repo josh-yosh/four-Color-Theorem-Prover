@@ -12,6 +12,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # ==========================================
 find_package(glfw3 CONFIG REQUIRED)
 find_package(glad CONFIG REQUIRED)
+find_package(imgui CONFIG REQUIRED)
 
 
 # ==========================================
@@ -46,6 +47,7 @@ target_include_directories(PointLib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_link_libraries(PointLib PUBLIC
     glfw
     glad::glad
+    imgui::imgui
 )
 
 target_link_libraries(my_executable PRIVATE 

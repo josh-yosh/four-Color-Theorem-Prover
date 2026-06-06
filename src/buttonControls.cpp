@@ -29,18 +29,19 @@ void newPointClick(GLFWwindow* window, int button, int action, set<Point> &click
         convertScreenToNDC(window, xpos, ypos, ndcX, ndcY);
 
         //checks if the click is near an existing line, if so, it will add a point on the line and split the line into two segments
-        optional<Point> pointOnLine = nullopt;
+        set<Point> possiblePointOnLine = {};
+        Point pointOnLine;
         for (const auto& connection : allEdges) {
             vector<Point> connPoints(connection.begin(), connection.end());
             optional<Point> potentialPoint = closestPointOnLine(Point(ndcX, ndcY), connPoints[0], connPoints[1]);
             if (potentialPoint != nullopt) {
-                pointOnLine = potentialPoint;
-                break;
+                possiblePointOnLine.insert(*potentialPoint);
             }
         }
-
-        if (pointOnLine) {
-            clickedPoints.insert(*pointOnLine);
+        cout << "possible points on line: " << possiblePointOnLine.size() << "\n";
+        if (possiblePointOnLine.size() > 0) {
+            pointOnLine = getNearestPointToTarget(possiblePointOnLine, Point(ndcX, ndcY));
+            clickedPoints.insert(pointOnLine);
         } else {
             clickedPoints.insert(Point(ndcX, ndcY));
             pointClickedMessage(xpos, ypos, ndcX, ndcY);

@@ -6,7 +6,7 @@
 #include "Point.h"
 using namespace std;
 
-constexpr double CLICK_THRESHOLD = 0.025;
+constexpr double CLICK_THRESHOLD = 0.015;
 
 
 optional<Point> getIntersectionPoint(const set<Point>& line1, const set<Point>& line2) {
@@ -264,5 +264,20 @@ optional<Point> pointIsNearOtherPoints(const Point& point, const set<Point>& oth
         }
     }
     return nullopt; // No nearby points found
+}
+
+Point getNearestPointToTarget(const set<Point>& points, const Point& target) {
+    Point nearestPoint;
+    double minDistanceSq = std::numeric_limits<double>::max();
+
+    for (const auto& point : points) {
+        double distSq = point.distanceSquared(target);
+        if (distSq < minDistanceSq) {
+            minDistanceSq = distSq;
+            nearestPoint = point;
+        }
+    }
+
+    return nearestPoint;
 }
 
