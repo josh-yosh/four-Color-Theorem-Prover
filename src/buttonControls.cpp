@@ -146,44 +146,6 @@ bool ConnectingPoints(GLFWwindow* window, int button, int action, vector<Point> 
     return returnValue;
 }
 
-bool hasActiveConnection(const set<Point>& activeConnections) {
-    return !activeConnections.empty();
-}
-
-// Returns the first point that is near the click position, or nullopt if none are close enough
-optional<Point> getNearestPoint(GLFWwindow* window, const vector<Point>& clickedPoints) {
-    double ndcX, ndcY;
-    getCursorPositionInNDC(window, ndcX, ndcY);
-
-    // Search if point is near clicked point.
-    for (const auto& point : clickedPoints) {
-        if (validClick(point, Point(ndcX, ndcY))) {
-            return point; // Automatically wrapped in optional
-        }
-    }
-
-    // Return "no point" safely
-    return nullopt; 
-}
-
-// determines if a click is close enough to a point to be considered a valid selection
-bool validClick(const Point& point, const Point& click) {
-    double distanceSquared = (point.x - click.x) * (point.x - click.x) + (point.y - click.y) * (point.y - click.y);
-    return distanceSquared < (CLICK_THRESHOLD * CLICK_THRESHOLD); // Compare squared distances to avoid sqrt
-}
-
-void getCursorPositionInNDC(GLFWwindow* window, double& ndcX, double& ndcY) {
-    double screenX, screenY;
-    glfwGetCursorPos(window, &screenX, &screenY);
-
-    int width, height;
-    glfwGetWindowSize(window, &width, &height); // Must be WindowSize to match CursorPos!
-
-    // Calculate NDC (-1.0 to 1.0)
-    ndcX = (2.0 * screenX) / (double)width - 1.0;
-    ndcY = 1.0 - (2.0 * screenY) / (double)height;    
-}
-
 void pointClickedMessage(double xpos, double ypos, double ndcX, double ndcY) {
     cout << "Point 1 Clicked: (" << xpos << ", " << ypos 
                 << ") -> NDC: (" << ndcX << ", " << ndcY << ")\n";
@@ -198,11 +160,6 @@ void noNearbyPointMessage() {
     cout << "No nearby point found for connection.\n";
 }
 
-void convertScreenToNDC(GLFWwindow* window, double screenX, double screenY, double& ndcX, double& ndcY) {
-    int width, height;
-    glfwGetWindowSize(window, &width, &height);
-    ndcX = (2.0f * (float)screenX) / (float)width - 1.0f;
-    ndcY = 1.0f - (2.0f * (float)screenY) / (float)height;
-}
+
 
 

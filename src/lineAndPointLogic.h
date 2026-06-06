@@ -1,10 +1,14 @@
 #ifndef LINE_AND_POINT_LOGIC_H
 #define LINE_AND_POINT_LOGIC_H
+#define GLFW_INCLUDE_NONE
 
 #include <unordered_map>
 #include <optional>
 #include <set>
 #include "Point.h"
+#include <vector>
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
 using namespace std;
 
 // Declaration of the intersection calculation function
@@ -23,4 +27,16 @@ bool pointWithinSegments(const Point& p, const Point& p1, const Point& p2);
 void getConstantsFromLine(const set<Point>& line1, const set<Point>& line2, float& a1, float& b1, float& c1, float& a2, float& b2, float& c2, float& determinant);
 
 void getPointsFromLine(const set<Point>& line1, const set<Point>& line2, Point& p1, Point& p2, Point& p3, Point& p4);
+
+optional<Point> getNearestPoint(GLFWwindow* window, const vector<Point>& clickedPoints);
+
+void convertScreenToNDC(GLFWwindow* window, double screenX, double screenY, double& ndcX, double& ndcY);
+
+void getCursorPositionInNDC(GLFWwindow* window, double& ndcX, double& ndcY);
+
+bool validClick(const Point& point, const Point& click);
+
+bool hasActiveConnection(const set<Point>& activeConnections);
+
+
 #endif // LINE_AND_POINT_LOGIC_H
