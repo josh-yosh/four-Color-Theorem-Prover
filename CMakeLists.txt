@@ -26,6 +26,8 @@ add_library(PointLib
     src/buttonControls.cpp
     src/lineAndPointLogic.h
     src/lineAndPointLogic.cpp
+    src/colorLogic.h
+    src/colorLogic.cpp
 )
 
 # Next, create your main application executable

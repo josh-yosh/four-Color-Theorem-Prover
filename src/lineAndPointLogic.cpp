@@ -7,6 +7,7 @@
 using namespace std;
 
 constexpr double CLICK_THRESHOLD = 0.015;
+constexpr double CLICK_THRESHOLD2 = 0.025;
 
 
 optional<Point> getIntersectionPoint(const set<Point>& line1, const set<Point>& line2) {
@@ -222,6 +223,12 @@ bool validClick(const Point& point, const Point& click) {
     return distanceSquared < (CLICK_THRESHOLD * CLICK_THRESHOLD); // Compare squared distances to avoid sqrt
 }
 
+// determines if a click is close enough to a point to be considered a valid selection
+bool pointIsNearOtherPoint(const Point& point, const Point& point2) {
+    double distanceSquared = (point.x - point2.x) * (point.x - point2.x) + (point.y - point2.y) * (point.y - point2.y);
+    return distanceSquared < (CLICK_THRESHOLD2 * CLICK_THRESHOLD2); // Compare squared distances to avoid sqrt
+}
+
 void convertScreenToNDC(GLFWwindow* window, double screenX, double screenY, double& ndcX, double& ndcY) {
     int width, height;
     glfwGetWindowSize(window, &width, &height);
@@ -248,7 +255,7 @@ optional<Point> getNearestPoint(GLFWwindow* window, const set<Point>& clickedPoi
 
     // Search if point is near clicked point.
     for (const auto& point : clickedPoints) {
-        if (validClick(point, Point(ndcX, ndcY))) {
+        if (pointIsNearOtherPoint(point, Point(ndcX, ndcY))) {
             return point; // Automatically wrapped in optional
         }
     }

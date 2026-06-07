@@ -41,6 +41,8 @@ bool hasActiveConnection(const set<Point>& activeConnections);
 
 optional<Point> pointIsNearOtherPoints(const Point& point, const set<Point>& otherPoints);
 
+bool pointIsNearOtherPoint(const Point& point, const Point& point2);
+
 Point getNearestPointToTarget(const set<Point>& points, const Point& target);
 
 
