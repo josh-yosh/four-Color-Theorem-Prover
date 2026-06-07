@@ -1,3 +1,13 @@
+
+### 6/7/26
+1. I'm going to need to do is figure out how to recognize what an enclosure is (breadth-first-search)
+2. how to find adjacent enclosures (if two enclosures share a edge)
+3. map them to nodes
+4. use backtracking to determine if 4 colors could color the map
+5. figure out how to visually color in each square
+
+#### Stage 2 (above): Logic for adjacent enclosures
+
 ### 6/5/26
 1. have to figure out how to connect to existing point if it exists for intersection
 2. figuring out if point inbetween segments had to do nearly equal due to float division.
