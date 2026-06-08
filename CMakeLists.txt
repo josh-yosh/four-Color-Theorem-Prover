@@ -19,9 +19,11 @@ find_package(imgui CONFIG REQUIRED)
 # 3. Define Targets (Your Libraries & Executables)
 # ==========================================
 # First, create your Point library (assuming Point.cpp/h are in your src folder)
-add_library(PointLib 
-    src/Point.cpp 
+add_library(PointLib
+    src/Point.cpp
     src/Point.h
+    src/Edge.cpp
+    src/Edge.h
     src/buttonControls.h
     src/buttonControls.cpp
     src/lineAndPointLogic.h
@@ -29,7 +31,6 @@ add_library(PointLib
     src/colorLogic.h
     src/colorLogic.cpp
     src/AtomicEnclosure.h
-    src/Edge.h
 )
 
 # Next, create your main application executable

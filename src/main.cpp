@@ -10,6 +10,7 @@
 #include <optional>
 #include <set>
 #include "Point.h"
+#include "Edge.h"
 #include "buttonControls.h"
 #include "lineAndPointLogic.h"
 using namespace std;
@@ -21,7 +22,7 @@ int windowHeight = 600;
 set<Point> clickedPoints;
 vector<Point> pointsToRender;
 set<Point> currentConnection; 
-set<set<Point>> allEdges;
+set<Edge> allEdges;
 set<Point> intersectionPoints; // Store intersection points
 bool isConnecting = false; // Track if we are in the process of connecting points
 
@@ -256,10 +257,9 @@ struct Engine {
             if(hasConnections){
                 // 1. Flatten all connections into one continuous vector first
                 vector<Point> linesToDraw;
-                for (const auto& connection : allEdges) {
-                    for (const auto& point : connection) {
-                        linesToDraw.push_back(point);
-                    }
+                for (const auto& edge : allEdges) {
+                    linesToDraw.push_back(edge.p1());
+                    linesToDraw.push_back(edge.p2());
                 }
 
                 // 2. Only perform GPU operations if there is actually data to draw
