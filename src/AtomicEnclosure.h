@@ -12,10 +12,9 @@ struct AtomicEnclosure {
     set<Edge> edges;
 
     AtomicEnclosure(const set<Point>& pts, const set<Edge>& eds) : points(pts), edges(eds) {}
-    
-    double area() const;
-    bool contains(const Point& p) const;
+
     bool sharesEdgeWith(const AtomicEnclosure& other) const;
+    bool atomicEnclosureHasEdge(Edge edge) const;
 
 };
 

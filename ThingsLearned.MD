@@ -2,6 +2,8 @@
 ### 6/7/26
 1. if we find the smallest path back to original point, that would be the smallest atomic enclosure.
 2. going to see how to render in a color space
+3. spent all of today working on creating structs to make computation more easy. Made edge struct to make things easier later on.
+4. should've made better architectural decisions before.
 
 
 #### Stage 2 (above): Logic for adjacent enclosures
