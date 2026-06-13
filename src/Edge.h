@@ -24,6 +24,8 @@ struct Edge {
 
     bool operator<(const Edge& other) const;
     bool operator==(const Edge& other) const;
+
+    bool hasEndpoint(const Point& p) const;
 };
 
 #endif // EDGE_H

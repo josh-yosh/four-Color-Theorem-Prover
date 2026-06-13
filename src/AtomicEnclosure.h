@@ -16,6 +16,8 @@ struct AtomicEnclosure {
     bool sharesEdgeWith(const AtomicEnclosure& other) const;
     bool atomicEnclosureHasEdge(Edge edge) const;
 
+    bool operator<(const AtomicEnclosure& other) const;
+    bool operator==(const AtomicEnclosure& other) const;
 };
 
 #endif 

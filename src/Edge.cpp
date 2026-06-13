@@ -31,3 +31,7 @@ bool Edge::operator==(const Edge& other) const {
     return (nearlyEqual(a1, b1) && nearlyEqual(a2, b2)) ||
            (nearlyEqual(a1, b2) && nearlyEqual(a2, b1));
 }
+
+bool Edge::hasEndpoint(const Point& p) const{
+    return p1() == p || p2() == p;
+}

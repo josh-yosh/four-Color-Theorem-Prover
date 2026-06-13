@@ -31,6 +31,7 @@ add_library(PointLib
     src/colorLogic.h
     src/colorLogic.cpp
     src/AtomicEnclosure.h
+    src/AtomicEnclosure.cpp
 )
 
 # Next, create your main application executable

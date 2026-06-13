@@ -1,3 +1,5 @@
+### 6/11/26
+1. when adding to a map, you have to make it a pair using {} or std::make_pair(1,2);
 
 ### 6/7/26
 1. if we find the smallest path back to original point, that would be the smallest atomic enclosure.
