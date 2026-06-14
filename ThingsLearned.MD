@@ -1,3 +1,6 @@
+### 6/13/26
+1. glBufferData requires a contiguous block of memory (a pointer + size)
+
 ### 6/11/26
 1. when adding to a map, you have to make it a pair using {} or std::make_pair(1,2);
 

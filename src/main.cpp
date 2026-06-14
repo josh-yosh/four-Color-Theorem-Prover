@@ -13,6 +13,8 @@
 #include "Edge.h"
 #include "buttonControls.h"
 #include "lineAndPointLogic.h"
+#include "AtomicEnclosure.h"
+#include "colorLogic.h"
 using namespace std;
 
 int windowWidth = 800;
@@ -24,6 +26,8 @@ vector<Point> pointsToRender;
 set<Point> currentConnection; 
 set<Edge> allEdges;
 set<Point> intersectionPoints; // Store intersection points
+set<AtomicEnclosure> allAtomicEnclosures;
+unordered_map<Point, set<Edge>> pointToEdgeMap;
 bool isConnecting = false; // Track if we are in the process of connecting points
 
 
@@ -39,7 +43,7 @@ void window_size_callback(GLFWwindow* window, int width, int height) {
 
 // Mouse button callback function
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
-    if(ConnectingPoints(window, button, action, clickedPoints, currentConnection, allEdges, intersectionPoints, isConnecting)) {
+    if(ConnectingPoints(window, button, action, clickedPoints, currentConnection, allEdges, intersectionPoints, isConnecting, pointToEdgeMap, allAtomicEnclosures)) {
         cout << isConnecting << endl;
     } else if (!isConnecting){
         // If not connecting points, check for new point creation
@@ -53,9 +57,10 @@ struct Engine {
     
     const char *fragmentShaderSource = "#version 330 core\n"
         "out vec4 FragColor;\n"
+        "uniform vec4 uColor;\n"
         "void main()\n"
         "{\n"
-        "   FragColor = vec4(1.0f, 1.0f, 1.0f, 1.0f);\n"
+        "   FragColor = uColor;\n"
         "}\n\0";
 
     const char *vertexShaderSource = "#version 330 core\n"
@@ -221,6 +226,27 @@ struct Engine {
             ImGui_ImplGlfw_NewFrame();
             ImGui::NewFrame();
 
+            GLint colorLoc = glGetUniformLocation(shaderProgram, "uColor");
+
+            bool hasAtomicEnclosures = !allAtomicEnclosures.empty();
+
+            if(hasAtomicEnclosures){
+                for (const AtomicEnclosure& atomicEnclosure : allAtomicEnclosures) {
+                    vector<Point> boundary = orderEnclosureBoundary(atomicEnclosure);
+                    vector<Point> triangles = fanTriangulate(boundary);
+                    if (triangles.empty()) continue;
+
+                    glUniform4f(colorLoc, 0.0f, 1.0f, 0.0f, 1.0f);
+
+                    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+                    glBufferData(GL_ARRAY_BUFFER, triangles.size() * sizeof(Point), &triangles[0], GL_DYNAMIC_DRAW);
+                    glBindVertexArray(VAO);
+                    glDrawArrays(GL_TRIANGLES, 0, triangles.size());
+
+                }
+            }
+
+            glUniform4f(colorLoc, 1.0f, 1.0f, 1.0f, 1.0f);
             // If we have points, orphan/sub the buffer with new data
             bool hasPoints = !clickedPoints.empty();
             if (hasPoints) {
@@ -277,6 +303,8 @@ struct Engine {
 
                 
             }
+
+
 
             
 

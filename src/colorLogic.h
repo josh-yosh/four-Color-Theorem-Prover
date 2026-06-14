@@ -17,5 +17,8 @@ set<vector<Edge>> findShortestPaths(const unordered_map<Point, set<Edge>>& point
 unordered_map<Point, set<Edge>> createPointToEdgeMap(const set<Point>& points, const set<Edge>& edges);
 void addEdgeToEdgeMap(const Edge edge, unordered_map<Point, set<Edge>>& pointToEdgeMap);
 void addPointToEdgeMap(const Point point, unordered_map<Point, set<Edge>>& pointToEdgeMap);
+bool edgeAlreadySearched(Edge edge, vector<Edge>& path);
+vector<Point> orderEnclosureBoundary(const AtomicEnclosure& enclosure);
+vector<Point> fanTriangulate(const vector<Point>& boundary);
 
 #endif // COLOR_LOGIC_H

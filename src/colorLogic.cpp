@@ -37,22 +37,18 @@ void addEdgeAndCheckForNewEnclosures(Edge newEdge, unordered_map<Point, set<Edge
         set<vector<Edge>> paths = findShortestPaths(pointToEdgeMap, endpoint);
         newEnclosures.insert(paths.begin(), paths.end());
     }
-
     set<AtomicEnclosure> newAtomicEnclosures = convertSetOfPathsToAtomicEnclosure(newEnclosures);
     allAtomicEnclosures.insert(newAtomicEnclosures.begin(), newAtomicEnclosures.end());
 }
 
 set<AtomicEnclosure> convertSetOfPathsToAtomicEnclosure(set<vector<Edge>> newEnclosures){
     set<AtomicEnclosure> allAtomicEnclosures;
-
     for(vector<Edge> path : newEnclosures){
         set<Point> pointsInPath;
         set<Edge> edgesInEnclosure;
-
         for(Edge edge : path){
             pointsInPath.insert(edge.endpoints.begin(), edge.endpoints.end());
         }
-
         edgesInEnclosure.insert(path.begin(), path.end());
         allAtomicEnclosures.insert(AtomicEnclosure(pointsInPath, edgesInEnclosure));
     }
@@ -62,34 +58,35 @@ set<AtomicEnclosure> convertSetOfPathsToAtomicEnclosure(set<vector<Edge>> newEnc
 
 set<vector<Edge>> findShortestPaths(const unordered_map<Point, set<Edge>>& pointToEdgeMap, Point startPoint) {
     queue<vector<Edge>> queue;
-        set<vector<Edge>> paths;
-        set<Point> explored;
-        int shortestPathLength = 99;
-        int currentPathLength = 1;
+    set<vector<Edge>> paths;
+    int shortestPathLength = 99;
+    int currentPathLength = 1;
 
-        for(Edge edge : pointToEdgeMap.at(startPoint)){
-            queue.push({edge});
-        }
+    for(Edge edge : pointToEdgeMap.at(startPoint)){
+        queue.push({edge});
+    }
 
-        while(!queue.empty() && currentPathLength <= shortestPathLength){
-            currentPathLength += 1;
-            vector<Edge> current = queue.front();
-            Edge last = current.back();
-            for(Point endpoint : last.endpoints){
-                if(endpoint == startPoint){
-                    paths.insert(current);
-                    shortestPathLength = currentPathLength;
-                } else if(explored.count(endpoint) < 1){
-                    set<Edge> allEdgesFromLastPoint = pointToEdgeMap.at(endpoint);
-                    for(Edge edge : allEdgesFromLastPoint){
-                        vector<Edge> newPath = current;
+    while(!queue.empty() && currentPathLength <= shortestPathLength){
+        currentPathLength += 1;
+        vector<Edge> currentPath = queue.front();
+        Edge last = currentPath.back();
+        for(Point endpoint : last.endpoints){
+            if(endpoint == startPoint && currentPath.size() > 2){
+                paths.insert(currentPath);
+                shortestPathLength = currentPathLength;
+            } else {
+                set<Edge> allEdgesFromLastPoint = pointToEdgeMap.at(endpoint);
+                for(Edge edge : allEdgesFromLastPoint){
+                    if(!edgeAlreadySearched(edge, currentPath)){
+                        vector<Edge> newPath = currentPath;
                         newPath.push_back(edge);
                         queue.push(newPath);
                     }
                 }
             }
-            queue.pop();
         }
+        queue.pop();
+    }
     return paths;
 }
 
@@ -117,4 +114,52 @@ void addEdgeToEdgeMap(const Edge edge, unordered_map<Point, set<Edge>>& pointToE
 
 void addPointToEdgeMap(const Point point, unordered_map<Point, set<Edge>>& pointToEdgeMap){
     pointToEdgeMap[point];
+}
+
+vector<Point> orderEnclosureBoundary(const AtomicEnclosure& enclosure) {
+    vector<Point> ordered;
+    if (enclosure.edges.empty()) return ordered;
+
+    unordered_map<Point, vector<Edge>> adjacency;
+    for (const Edge& edge : enclosure.edges) {
+        adjacency[edge.p1()].push_back(edge);
+        adjacency[edge.p2()].push_back(edge);
+    }
+
+    set<Edge> usedEdges;
+    Point start = *enclosure.points.begin();
+    Point current = start;
+    ordered.push_back(current);
+
+    while (ordered.size() <= enclosure.edges.size()) {
+        bool advanced = false;
+        for (const Edge& edge : adjacency[current]) {
+            if (usedEdges.count(edge)) continue;
+            usedEdges.insert(edge);
+            current = nearlyEqual(edge.p1(), current) ? edge.p2() : edge.p1();
+            advanced = true;
+            break;
+        }
+        if (!advanced || nearlyEqual(current, start)) break;
+        ordered.push_back(current);
+    }
+
+    return ordered;
+}
+
+vector<Point> fanTriangulate(const vector<Point>& boundary) {
+    vector<Point> triangles;
+    for (size_t i = 1; i + 1 < boundary.size(); ++i) {
+        triangles.push_back(boundary[0]);
+        triangles.push_back(boundary[i]);
+        triangles.push_back(boundary[i + 1]);
+    }
+    return triangles;
+}
+
+bool edgeAlreadySearched(Edge edge, vector<Edge>& path){
+    for(Edge exploredPath : path){
+        if (exploredPath == edge) return true;
+    }
+    return false;
 }

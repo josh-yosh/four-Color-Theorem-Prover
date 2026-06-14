@@ -8,6 +8,8 @@
 #include "lineAndPointLogic.h"
 #include "Point.h"
 #include "Edge.h"
+#include "AtomicEnclosure.h"
+#include "colorLogic.h"
 using namespace std;
 
 void pointClickedMessage(double xpos, double ypos, double ndcX, double ndcY);
@@ -43,7 +45,11 @@ void newPointClick(GLFWwindow* window, int button, int action, set<Point>& click
 }
 
 // On click: start a connection. On release: complete it, splitting any crossed edges.
-bool ConnectingPoints(GLFWwindow* window, int button, int action, set<Point>& clickedPoints, set<Point>& currentConnection, set<Edge>& allEdges, set<Point>& intersectionPoints, bool& isConnecting) {
+bool ConnectingPoints(GLFWwindow* window, int button, int action, set<Point>& clickedPoints, 
+                        set<Point>& currentConnection, set<Edge>& allEdges, set<Point>& intersectionPoints,
+                        bool& isConnecting, 
+                        unordered_map<Point, set<Edge>>& pointToEdgeMap, set<AtomicEnclosure>& allAtomicEnclosures) {
+
     bool isLeftClick   = (button == GLFW_MOUSE_BUTTON_LEFT) && (action == GLFW_PRESS);
     bool isLeftRelease = (button == GLFW_MOUSE_BUTTON_LEFT) && (action == GLFW_RELEASE);
     bool activeConnectionExists = hasActiveConnection(currentConnection);
@@ -117,6 +123,7 @@ bool ConnectingPoints(GLFWwindow* window, int button, int action, set<Point>& cl
                 allEdges.insert(currentEdge);
             }
 
+            addEdgeAndCheckForNewEnclosures(currentEdge, pointToEdgeMap, allAtomicEnclosures);
             currentConnection.clear();
             isConnecting = false;
             return true;

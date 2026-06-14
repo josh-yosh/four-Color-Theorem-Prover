@@ -39,6 +39,7 @@ add_executable(my_executable
     src/main.cpp 
     src/buttonControls.cpp 
     src/lineAndPointLogic.cpp
+    src/AtomicEnclosure.cpp
 )
 
 # ==========================================

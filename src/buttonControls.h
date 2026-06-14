@@ -9,11 +9,15 @@
 #include <set>
 #include "Point.h"
 #include "Edge.h"
+#include "AtomicEnclosure.h"
 using namespace std;
 
 // Core mouse interaction functions called by main
 void newPointClick(GLFWwindow* window, int button, int action, set<Point>& clickedPoints, set<Edge>& allEdges);
-bool ConnectingPoints(GLFWwindow* window, int button, int action, set<Point>& clickedPoints, set<Point>& currentConnection, set<Edge>& allEdges, set<Point>& intersectionPoints, bool& isConnecting);
+bool ConnectingPoints(GLFWwindow* window, int button, int action,
+                    set<Point>& clickedPoints, set<Point>& currentConnection,
+                    set<Edge>& allEdges, set<Point>& intersectionPoints, bool& isConnecting,
+                    unordered_map<Point, set<Edge>>& pointToEdgeMap, set<AtomicEnclosure>& allAtomicEnclosures);
 
 // Helper utilities
 bool hasActiveConnection(const set<Point>& activeConnections);
