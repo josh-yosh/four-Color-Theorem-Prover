@@ -299,13 +299,12 @@ struct Engine {
 
                     // Draw ALL lines with a single GPU command
                     glDrawArrays(GL_LINES, 0, linesToDraw.size());
-                }
-
-                
+                }                
             }
 
+            allAtomicEnclosures = findAtomicEnclosures(allEdges);
 
-
+            cout << allAtomicEnclosures.size() << "\n";
             
 
             // Mouse coordinate overlay (top-right)

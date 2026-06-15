@@ -1,5 +1,14 @@
+### 6/14/26
+1. First thing im doing today is working on is correcting the current algorithm to finding all the enclosed spaces. Fix: I had to make it so that we start that every edge has a path and not every point has a path, that way some enclosures aren't missed. I also had to make sure that paths that have the first two and last edge sharing a point are excluded because that would mean an enclosure with the start edge sticking out. like a traingle with a line on top.
+
 ### 6/13/26
 1. glBufferData requires a contiguous block of memory (a pointer + size)
+
+## Issues to deal with 6/13/26
+1. figure out how to break down an atomic enclosure with more than 3 vertices into triangles.
+2. figure out better way to find enclosure. Maybe until every edge has found a path.
+3. figure out how to find a way to find a coloring for this map
+4. figure out how to send 4 payloads, one for each color, to the gpu.
 
 ### 6/11/26
 1. when adding to a map, you have to make it a pair using {} or std::make_pair(1,2);

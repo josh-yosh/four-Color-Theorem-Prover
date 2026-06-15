@@ -32,6 +32,7 @@ add_library(PointLib
     src/colorLogic.cpp
     src/AtomicEnclosure.h
     src/AtomicEnclosure.cpp
+    src/Path.cpp
 )
 
 # Next, create your main application executable
@@ -40,6 +41,7 @@ add_executable(my_executable
     src/buttonControls.cpp 
     src/lineAndPointLogic.cpp
     src/AtomicEnclosure.cpp
+    src/Path.cpp
 )
 
 # ==========================================

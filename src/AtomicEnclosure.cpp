@@ -5,6 +5,12 @@
 
 using namespace std;
 
+AtomicEnclosure::AtomicEnclosure(const Path& path) : edges(path.edges) {
+    for (const Edge& edge : path.edges) {
+        points.insert(edge.endpoints.begin(), edge.endpoints.end());
+    }
+}
+
 bool AtomicEnclosure::atomicEnclosureHasEdge(Edge edge) const {
     return edges.count(edge) > 0;
 }

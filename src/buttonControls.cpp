@@ -46,8 +46,7 @@ void newPointClick(GLFWwindow* window, int button, int action, set<Point>& click
 
 // On click: start a connection. On release: complete it, splitting any crossed edges.
 bool ConnectingPoints(GLFWwindow* window, int button, int action, set<Point>& clickedPoints, 
-                        set<Point>& currentConnection, set<Edge>& allEdges, set<Point>& intersectionPoints,
-                        bool& isConnecting, 
+                        set<Point>& currentConnection, set<Edge>& allEdges, set<Point>& intersectionPoints, bool& isConnecting, 
                         unordered_map<Point, set<Edge>>& pointToEdgeMap, set<AtomicEnclosure>& allAtomicEnclosures) {
 
     bool isLeftClick   = (button == GLFW_MOUSE_BUTTON_LEFT) && (action == GLFW_PRESS);
@@ -123,7 +122,7 @@ bool ConnectingPoints(GLFWwindow* window, int button, int action, set<Point>& cl
                 allEdges.insert(currentEdge);
             }
 
-            addEdgeAndCheckForNewEnclosures(currentEdge, pointToEdgeMap, allAtomicEnclosures);
+            // addEdgeAndCheckForNewEnclosures(currentEdge, pointToEdgeMap, allAtomicEnclosures);
             currentConnection.clear();
             isConnecting = false;
             return true;
