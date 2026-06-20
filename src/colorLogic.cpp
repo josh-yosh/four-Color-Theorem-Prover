@@ -31,14 +31,36 @@ set<AtomicEnclosure> findAtomicEnclosures(const set<Point>& points, const set<Ed
 
 set<AtomicEnclosure> findAtomicEnclosures(const set<Edge>& edges) {
     map<Edge, set<Edge>> edgeToEdgeMap = createEdgeToEdgeMap(edges);
-    set<AtomicEnclosure> allAtomicEnclosures;
 
+    // Iteratively prune dead ends: an edge is a dead end if, after ignoring
+    // already-pruned edges, it no longer has valid neighbors on both endpoints.
+    set<Edge> deadEnds;
+    bool changed = true;
+    while (changed) {
+        changed = false;
+        for (const auto& [edge, neighbors] : edgeToEdgeMap) {
+            if (deadEnds.count(edge)) continue;
+            set<Point> pointsConnected;
+            for (const Edge& n : neighbors) {
+                if (deadEnds.count(n)) continue;
+                for (const Point& p : n.endpoints) {
+                    if (edge.endpoints.count(p)) pointsConnected.insert(p);
+                }
+            }
+            if (pointsConnected.size() < 2) {
+                deadEnds.insert(edge);
+                changed = true;
+            }
+        }
+    }
+
+    set<AtomicEnclosure> allAtomicEnclosures;
     for(const Edge& startEdge : edges){
-        Path shortestPath = findShortestPath(edgeToEdgeMap, startEdge);
+        if (deadEnds.count(startEdge)) continue;
+        Path shortestPath = findShortestPath(edgeToEdgeMap, startEdge, deadEnds);
         if(!shortestPath.isEmptyPath()) { allAtomicEnclosures.insert(AtomicEnclosure(shortestPath)); }
     }
 
-    
     return allAtomicEnclosures;
 }
 
@@ -210,29 +232,128 @@ void addEdgeToEdgeToEdgeMap(const Edge edge, map<Edge, set<Edge>>& edgeToEdgeMap
     edgeToEdgeMap[edge] = edgesSharingPoint;
 }
 
-Path findShortestPath(const map<Edge, set<Edge>>& edgeToEdgeMap, Edge startEdge) {
+Path findShortestPath(const map<Edge, set<Edge>>& edgeToEdgeMap, Edge startEdge, const set<Edge>& deadEnds) {
     queue<vector<Edge>> queue;
     Path path;
+    int count = 0;
 
+    //start with every edge that connects to the beginning edge
     for(Edge edge : edgeToEdgeMap.at(startEdge)){
-        queue.push({startEdge, edge});
+        if (!deadEnds.count(edge))
+            queue.push({startEdge, edge});
     }
 
+    //go until the queue is empty or shortest path found.
     while(!queue.empty()){
         vector<Edge> currentPath = queue.front();
+        queue.pop();
+        if(currentPath.size() > edgeToEdgeMap.size()) continue;
+
         Edge last = currentPath.back();
+
+        //find all the possible ways from the last edge
         for(Edge edge : edgeToEdgeMap.at(last)){
+            if(deadEnds.count(edge)) continue;
             if(edge == startEdge && currentPath.size() > 2 && !edgesShareCommonPoint(startEdge, currentPath.at(1), currentPath.back())){
-                path = Path(currentPath);
-                return path;
+                return Path(currentPath);
             } else if(!edgeAlreadySearched(edge, currentPath)){
                 vector<Edge> newPath = currentPath;
                 newPath.push_back(edge);
                 queue.push(newPath);
             }
         }
-        queue.pop();
+        count++;
+        cout << "iterations: " << count << "\n";
+
+        if(count == 100000){
+            // ── DEBUG: findShortestPath exhausted queue with no enclosure found ──
+            auto printEdge = [](const Edge& e) {
+                cout << "(" << e.p1().x << "," << e.p1().y << ")-(" << e.p2().x << "," << e.p2().y << ")";
+            };
+
+            cout << "\n=== findShortestPath FAILED (no enclosure found) ===\n";
+
+            cout << "  startEdge: ";
+            printEdge(startEdge);
+            cout << "\n";
+
+            cout << "  deadEnds (" << deadEnds.size() << "):\n";
+            for (const Edge& e : deadEnds) {
+                cout << "    "; printEdge(e); cout << "\n";
+            }
+
+            cout << "  edgeToEdgeMap (" << edgeToEdgeMap.size() << " edges):\n";
+            for (const auto& [edge, neighbors] : edgeToEdgeMap) {
+                cout << "    "; printEdge(edge); cout << " -> [";
+                for (const Edge& n : neighbors) { printEdge(n); cout << " "; }
+                cout << "]\n";
+            }
+
+            exit(1);
+        }
     }
 
     return path;
+}
+
+bool cantMakeEnclosure(const map<Edge, set<Edge>>& edgeToEdgeMap, Edge startEdge){
+    set<Point> pointsConnected;
+
+    for(Edge edge : edgeToEdgeMap.at(startEdge)){ //get all edges connecting to the starting edge
+        for(Point endpoint : edge.endpoints){ // grab the endpoints of those edges
+            bool sharesPointWithStartEdge = startEdge.endpoints.count(endpoint) > 0; //see which endpoint it shares with the start edge point
+            if(sharesPointWithStartEdge){ //if it does share a point:
+                pointsConnected.insert(endpoint); // add that the the points of Pointsconnected
+                if(pointsConnected.size() == 2) return false; //if both points have an edge, then it can make an enclosure
+            }
+        }
+    }
+
+    return true;
+}
+
+set<Edge> findDeadBranch(const map<Edge, set<Edge>>& edgeToEdgeMap, Edge deadEnd){
+    set<Edge> deadBranch = {deadEnd};
+
+    // Traverse from the dead-end edge until we reach an edge that branches
+    Edge current = deadEnd;
+    bool hasPrev = false;
+    Edge prev; // will be set once we move forward
+
+    while (true) {
+        auto connectingEdges = edgeToEdgeMap.find(current);
+        if (connectingEdges == edgeToEdgeMap.end()) break;
+
+        const set<Edge>& neighbors = connectingEdges->second;
+
+        const Edge& first = *neighbors.begin();
+        const Edge& second = *std::next(neighbors.begin(), 1);
+        //if there are 2 edges splitting off from the same edge
+        cout << "neighbor size: " << neighbors.size() << "\n";
+        cout << "share common point: " << edgesShareCommonPoint(deadEnd, first, second) << "\n";
+        if (neighbors.size() > 2 || edgesShareCommonPoint(deadEnd, first, second)) break;
+
+        // Choose the next edge: the neighbor that's not the previous edge (if any).
+        Edge next;
+        bool foundNext = false;
+        for (const Edge& e : neighbors) {
+            if (hasPrev && e == prev) continue;
+            next = e;
+            foundNext = true;
+            break;
+        }
+        if (!foundNext) break;
+
+        // Avoid cycles
+        if (deadBranch.count(next)) break;
+
+        deadBranch.insert(next);
+
+        // advance
+        prev = current;
+        hasPrev = true;
+        current = next;
+    }
+
+    return deadBranch;
 }

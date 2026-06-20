@@ -27,6 +27,9 @@ vector<Point> fanTriangulate(const vector<Point>& boundary);
 
 map<Edge, set<Edge>> createEdgeToEdgeMap(const set<Edge>& edges);
 void addEdgeToEdgeToEdgeMap(const Edge edge, map<Edge, set<Edge>>& edgeToEdgeMap);
-Path findShortestPath(const map<Edge, set<Edge>>& edgeToEdgeMap, Edge startEdge);
+Path findShortestPath(const map<Edge, set<Edge>>& edgeToEdgeMap, Edge startEdge, const set<Edge>& deadEnds);
+bool cantMakeEnclosure(const map<Edge, set<Edge>>& edgeToEdgeMap, Edge startEdge);
+set<Edge> findDeadBranch(const map<Edge, set<Edge>>& edgeToEdgeMap, Edge deadEnd);
+
 
 #endif // COLOR_LOGIC_H

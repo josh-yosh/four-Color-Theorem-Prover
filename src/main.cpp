@@ -45,11 +45,11 @@ void window_size_callback(GLFWwindow* window, int width, int height) {
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
     if(ConnectingPoints(window, button, action, clickedPoints, currentConnection, allEdges, intersectionPoints, isConnecting, pointToEdgeMap, allAtomicEnclosures)) {
         cout << isConnecting << endl;
+        allAtomicEnclosures = findAtomicEnclosures(allEdges);
     } else if (!isConnecting){
         // If not connecting points, check for new point creation
         newPointClick(window, button, action, clickedPoints, allEdges);
     }
-
 }
 
 
@@ -301,11 +301,6 @@ struct Engine {
                     glDrawArrays(GL_LINES, 0, linesToDraw.size());
                 }                
             }
-
-            allAtomicEnclosures = findAtomicEnclosures(allEdges);
-
-            cout << allAtomicEnclosures.size() << "\n";
-            
 
             // Mouse coordinate overlay (top-right)
             double ndcX, ndcY;

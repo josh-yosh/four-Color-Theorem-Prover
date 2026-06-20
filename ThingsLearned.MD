@@ -1,3 +1,9 @@
+### 6/19/26
+1. trying to stop the search with dead branches which which would make calculations quicker: deadbranches and deadends
+
+### 6/15/26
+1. for graphs with a lot of edges/enclosures. if there was a lone edge sticking out, it wouldn't be able to find an enclosure/path for that edge thus go through all the possibilities and crash the computer. need to implement that if the edge doesn't have an edge on each side then just skip it.
+
 ### 6/14/26
 1. First thing im doing today is working on is correcting the current algorithm to finding all the enclosed spaces. Fix: I had to make it so that we start that every edge has a path and not every point has a path, that way some enclosures aren't missed. I also had to make sure that paths that have the first two and last edge sharing a point are excluded because that would mean an enclosure with the start edge sticking out. like a traingle with a line on top.
 
