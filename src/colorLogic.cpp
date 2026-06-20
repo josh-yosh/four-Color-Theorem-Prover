@@ -3,6 +3,8 @@
 #include <unordered_map>
 #include <map>
 #include <queue>
+#include <cmath>
+#include <algorithm>
 #include "colorLogic.h"
 #include "AtomicEnclosure.h"
 #include "Path.h"
@@ -30,35 +32,85 @@ set<AtomicEnclosure> findAtomicEnclosures(const set<Point>& points, const set<Ed
 }
 
 set<AtomicEnclosure> findAtomicEnclosures(const set<Edge>& edges) {
-    map<Edge, set<Edge>> edgeToEdgeMap = createEdgeToEdgeMap(edges);
-
-    // Iteratively prune dead ends: an edge is a dead end if, after ignoring
-    // already-pruned edges, it no longer has valid neighbors on both endpoints.
-    set<Edge> deadEnds;
-    bool changed = true;
-    while (changed) {
-        changed = false;
-        for (const auto& [edge, neighbors] : edgeToEdgeMap) {
-            if (deadEnds.count(edge)) continue;
-            set<Point> pointsConnected;
-            for (const Edge& n : neighbors) {
-                if (deadEnds.count(n)) continue;
-                for (const Point& p : n.endpoints) {
-                    if (edge.endpoints.count(p)) pointsConnected.insert(p);
-                }
-            }
-            if (pointsConnected.size() < 2) {
-                deadEnds.insert(edge);
-                changed = true;
-            }
-        }
+    // Build adjacency: point -> list of neighbors sorted by angle (CCW)
+    map<Point, vector<Point>> adjacency;
+    for (const Edge& e : edges) {
+        adjacency[e.p1()].push_back(e.p2());
+        adjacency[e.p2()].push_back(e.p1());
+    }
+    for (auto& [p, neighbors] : adjacency) {
+        sort(neighbors.begin(), neighbors.end(), [&p](const Point& a, const Point& b) {
+            double angleA = atan2(a.y - p.y, a.x - p.x);
+            double angleB = atan2(b.y - p.y, b.x - p.x);
+            return angleA < angleB;
+        });
     }
 
+    // Trace faces using half-edge rotation:
+    // For directed half-edge (u -> v), the next half-edge in the same interior face
+    // is (v -> w) where w is the neighbor of v that comes just AFTER u in CW order
+    // (= just BEFORE u in CCW order).
+    set<pair<Point,Point>> usedHalfEdges;
     set<AtomicEnclosure> allAtomicEnclosures;
-    for(const Edge& startEdge : edges){
-        if (deadEnds.count(startEdge)) continue;
-        Path shortestPath = findShortestPath(edgeToEdgeMap, startEdge, deadEnds);
-        if(!shortestPath.isEmptyPath()) { allAtomicEnclosures.insert(AtomicEnclosure(shortestPath)); }
+
+    auto findNeighborIndex = [&](const Point& center, const Point& target) -> int {
+        const vector<Point>& neighbors = adjacency.at(center);
+        for (int i = 0; i < (int)neighbors.size(); i++) {
+            if (nearlyEqual(neighbors[i], target)) return i;
+        }
+        return -1;
+    };
+
+    for (const Edge& startEdge : edges) {
+        for (int dir = 0; dir < 2; dir++) {
+            Point from = (dir == 0) ? startEdge.p1() : startEdge.p2();
+            Point to   = (dir == 0) ? startEdge.p2() : startEdge.p1();
+
+            if (usedHalfEdges.count({from, to})) continue;
+
+            // Trace the face this half-edge belongs to
+            vector<Point> facePoints;
+            set<Edge> faceEdges;
+            Point cur_from = from, cur_to = to;
+            bool valid = true;
+
+            for (int steps = 0; steps < (int)edges.size() * 2 + 1; steps++) {
+                if (usedHalfEdges.count({cur_from, cur_to})) break;
+                usedHalfEdges.insert({cur_from, cur_to});
+                facePoints.push_back(cur_from);
+                faceEdges.insert(Edge(cur_from, cur_to));
+
+                // At cur_to, find cur_from in the sorted neighbor list
+                int idx = findNeighborIndex(cur_to, cur_from);
+                if (idx < 0) { valid = false; break; }
+
+                // Next in CW order = previous in CCW order
+                const vector<Point>& neighbors = adjacency.at(cur_to);
+                int nextIdx = (idx - 1 + (int)neighbors.size()) % (int)neighbors.size();
+                Point next_to = neighbors[nextIdx];
+
+                cur_from = cur_to;
+                cur_to = next_to;
+            }
+
+            if (!valid || facePoints.size() < 3) continue;
+
+            // Compute signed area to reject the outer (unbounded) face.
+            // Interior faces are wound CW (negative signed area in standard coords).
+            double signedArea = 0.0;
+            int n = facePoints.size();
+            for (int i = 0; i < n; i++) {
+                const Point& a = facePoints[i];
+                const Point& b = facePoints[(i + 1) % n];
+                signedArea += (a.x * b.y - b.x * a.y);
+            }
+            signedArea /= 2.0;
+
+            if (signedArea >= 0.0) continue; // skip outer/CCW face
+
+            set<Point> facePointSet(facePoints.begin(), facePoints.end());
+            allAtomicEnclosures.insert(AtomicEnclosure(facePointSet, faceEdges));
+        }
     }
 
     return allAtomicEnclosures;
@@ -232,40 +284,62 @@ void addEdgeToEdgeToEdgeMap(const Edge edge, map<Edge, set<Edge>>& edgeToEdgeMap
     edgeToEdgeMap[edge] = edgesSharingPoint;
 }
 
+// Returns the shared point between two edges (the point they both have as an endpoint).
+static Point sharedPoint(const Edge& a, const Edge& b) {
+    for (const Point& p : a.endpoints)
+        if (b.hasEndpoint(p)) return p;
+    return *a.endpoints.begin(); // fallback (shouldn't happen)
+}
+
 Path findShortestPath(const map<Edge, set<Edge>>& edgeToEdgeMap, Edge startEdge, const set<Edge>& deadEnds) {
-    queue<vector<Edge>> queue;
+    // Each queue entry: (path of edges, set of interior points already visited)
+    struct PathState {
+        vector<Edge> edges;
+        set<Point> visitedPoints;
+    };
+    queue<PathState> bfsQueue;
     Path path;
     int count = 0;
 
     //start with every edge that connects to the beginning edge
-    for(Edge edge : edgeToEdgeMap.at(startEdge)){
-        if (!deadEnds.count(edge))
-            queue.push({startEdge, edge});
+    for(const Edge& edge : edgeToEdgeMap.at(startEdge)){
+        if (!deadEnds.count(edge)) {
+            Point entry = sharedPoint(startEdge, edge);
+            bfsQueue.push({{startEdge, edge}, {entry}});
+        }
     }
 
     //go until the queue is empty or shortest path found.
-    while(!queue.empty()){
-        vector<Edge> currentPath = queue.front();
-        queue.pop();
+    while(!bfsQueue.empty()){
+        PathState state = bfsQueue.front();
+        bfsQueue.pop();
+        vector<Edge>& currentPath = state.edges;
+        set<Point>& visited = state.visitedPoints;
+
         if(currentPath.size() > edgeToEdgeMap.size()) continue;
 
         Edge last = currentPath.back();
 
         //find all the possible ways from the last edge
-        for(Edge edge : edgeToEdgeMap.at(last)){
+        for(const Edge& edge : edgeToEdgeMap.at(last)){
             if(deadEnds.count(edge)) continue;
             if(edge == startEdge && currentPath.size() > 2 && !edgesShareCommonPoint(startEdge, currentPath.at(1), currentPath.back())){
                 return Path(currentPath);
             } else if(!edgeAlreadySearched(edge, currentPath)){
-                vector<Edge> newPath = currentPath;
-                newPath.push_back(edge);
-                queue.push(newPath);
+                // Find the point we'd be moving through (the shared point between last and edge)
+                Point nextPoint = sharedPoint(last, edge);
+                // Skip if we'd revisit an interior point (prevents combinatorial explosion)
+                if (visited.count(nextPoint)) continue;
+                PathState newState = state;
+                newState.edges.push_back(edge);
+                newState.visitedPoints.insert(nextPoint);
+                bfsQueue.push(move(newState));
             }
         }
         count++;
         cout << "iterations: " << count << "\n";
 
-        if(count == 100000){
+        if(count == 10000){
             // ── DEBUG: findShortestPath exhausted queue with no enclosure found ──
             auto printEdge = [](const Edge& e) {
                 cout << "(" << e.p1().x << "," << e.p1().y << ")-(" << e.p2().x << "," << e.p2().y << ")";
@@ -287,6 +361,19 @@ Path findShortestPath(const map<Edge, set<Edge>>& edgeToEdgeMap, Edge startEdge,
                 cout << "    "; printEdge(edge); cout << " -> [";
                 for (const Edge& n : neighbors) { printEdge(n); cout << " "; }
                 cout << "]\n";
+            }
+
+            cout << "  queue (" << bfsQueue.size() << " paths):\n";
+            {
+                auto qCopy = bfsQueue;
+                int pathIdx = 0;
+                while (!qCopy.empty()) {
+                    const vector<Edge>& p = qCopy.front().edges;
+                    cout << "    [" << pathIdx++ << "] (" << p.size() << " edges): ";
+                    for (const Edge& e : p) { printEdge(e); cout << " -> "; }
+                    cout << "\n";
+                    qCopy.pop();
+                }
             }
 
             exit(1);

@@ -1,3 +1,8 @@
+### 6/20/26
+1. it's too slow to do BFS and need to look for something else.
+2. Looking at other algorithms, such as planar-facing-tracing
+3.
+
 ### 6/19/26
 1. trying to stop the search with dead branches which which would make calculations quicker: deadbranches and deadends
 
