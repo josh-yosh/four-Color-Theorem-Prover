@@ -5,16 +5,16 @@
 
 ## How finding the enclosures work:
 # Section 1 — Rotation Systems (CCW Angle Sort)
-Click "Next vertex →" to cycle through each vertex (A–F). It highlights the vertex in blue, draws each neighbor edge in a different color, shows the atan2 angle for each neighbor, and labels them in CCW order (1°, 2°, 3°…).
+Go through each vertex and order them in their radial value using atan2 angle for each neighbor, and labels them in CCW order (1°, 2°, 3°…).
 
 # Section 2 — Half-Edge Rotation Rule (Face Tracing)
-Click "Step →" to advance one half-edge at a time. The current half-edge is shown in amber, the current face being traced in green, and completed faces are shaded in purple. Use "Auto Play" to animate the full traversal, or "Next Face" to jump between faces.
+Go in order of each vertex and starting from either ccw or cw, find the angle most in that direction. The idea is that you don't repeat a direction, and you "hug" a direction then you'll eventually come back to the original point and find a face.
 
 # Section 3 — Shoelace Formula (Signed Area)
-Click "Show CCW face" or "Show CW face" to load a polygon, then "Step through sum" to see each triangle contribution to the sum — green triangles add area (+), red ones subtract (−). At the end it shows the final signed area and whether the face is interior ✅ or outer ❌.
+then by finding the signed area then you could tell if a face is an interior or exterior face. We then ignore the exterior face.
 
 # Section 4 — Euler's Formula
-Automatically computed from the actual graph — shows V, E, F as cards and verifies $V - E + F = 2$.
+Automatically computed from the actual graph — shows V, E, F as cards and verifies $V - E + F = 2$. This is to double check.
 
 ### 6/19/26
 1. trying to stop the search with dead branches which which would make calculations quicker: deadbranches and deadends
