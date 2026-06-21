@@ -334,7 +334,7 @@ Path findShortestPath(const map<Edge, set<Edge>>& edgeToEdgeMap, Edge startEdge,
                 PathState newState = state;
                 newState.edges.push_back(edge);
                 newState.visitedPoints.insert(nextPoint);
-                bfsQueue.push(move(newState));
+                bfsQueue.push(std::move(newState));
             }
         }
         count++;

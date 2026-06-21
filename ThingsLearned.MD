@@ -1,50 +1,86 @@
-### 6/20/26
+## 6/21/26
+1. There's an issue with my fan triangularization and I need a way to figure it out. currently it draws triangles outside of the face/enclosure.
+2. Monotone polygon is if ever line orthogonal to a "main" line, like an axis, hits two edges of the polygon 2x. if it's more or less than it's not monotone polygon.
+3. we can break up our non-monotone polygon into multiple monotone polygons.
+4. it doesn't seem that computationally complex as in it's (n log n)
+
+## Polygon Triangulation Algorithms
+
+### Ear Clipping
+| Factor | Details |
+|---|---|
+| Complexity | O(n²) per face |
+| Input | Simple polygon (convex or not) |
+| How it works | Repeatedly find a vertex whose triangle with its two neighbors lies fully inside the polygon, cut it off, repeat until 3 vertices remain |
+| Diagonal validity | Must check no other vertex is inside the ear triangle |
+| Best for | This project — faces are small (n < 20), any valid triangulation is fine |
+
+### Monotone Polygon Triangulation
+| Factor | Details |
+|---|---|
+| Complexity | O(n log n) decomposition + O(n) triangulation per monotone piece |
+| Input | Must first decompose into y-monotone subpolygons via sweep line |
+| How it works | Split polygon into monotone chains, greedily triangulate each chain |
+| Best for | Large faces where ear clipping's O(n²) is too slow |
+
+### Dynamic Programming
+| Factor | Details |
+|---|---|
+| Complexity | O(n³) time, O(n²) space |
+| Input | Convex polygons only for the standard recurrence |
+| Recurrence | `dp[i][j] = min over k of dp[i][k] + dp[k][j] + cost(v_i, v_k, v_j)` |
+| Cost function | Needs a defined objective (e.g. min diagonal length) — no objective means DP gives no benefit over ear clipping |
+| Counting variant | Can count distinct triangulations in polynomial time for simple polygons (Catalan number for convex) |
+| Limitation | Polygons with holes make counting #P-complete |
+| Best for | When you need an optimal triangulation or want to count/enumerate all triangulations |
+
+## 6/20/26
 1. it's too slow to do BFS and need to look for something else.
 2. Looking at other algorithms, such as planar-facing-tracing
 3. there was issues on finding enclosures and maybe turn towards hueuristics.
 
 ## How finding the enclosures work:
-# Section 1 — Rotation Systems (CCW Angle Sort)
+### Section 1 — Rotation Systems (CCW Angle Sort)
 Go through each vertex and order them in their radial value using atan2 angle for each neighbor, and labels them in CCW order (1°, 2°, 3°…).
 
-# Section 2 — Half-Edge Rotation Rule (Face Tracing)
+### Section 2 — Half-Edge Rotation Rule (Face Tracing)
 Go in order of each vertex and starting from either ccw or cw, find the angle most in that direction. The idea is that you don't repeat a direction, and you "hug" a direction then you'll eventually come back to the original point and find a face.
 
-# Section 3 — Shoelace Formula (Signed Area)
+### Section 3 — Shoelace Formula (Signed Area)
 then by finding the signed area then you could tell if a face is an interior or exterior face. We then ignore the exterior face.
 
-# Section 4 — Euler's Formula
+#### Section 4 — Euler's Formula
 Automatically computed from the actual graph — shows V, E, F as cards and verifies $V - E + F = 2$. This is to double check.
 
-### 6/19/26
+## 6/19/26
 1. trying to stop the search with dead branches which which would make calculations quicker: deadbranches and deadends
 
-### 6/15/26
+## 6/15/26
 1. for graphs with a lot of edges/enclosures. if there was a lone edge sticking out, it wouldn't be able to find an enclosure/path for that edge thus go through all the possibilities and crash the computer. need to implement that if the edge doesn't have an edge on each side then just skip it.
 
-### 6/14/26
+## 6/14/26
 1. First thing im doing today is working on is correcting the current algorithm to finding all the enclosed spaces. Fix: I had to make it so that we start that every edge has a path and not every point has a path, that way some enclosures aren't missed. I also had to make sure that paths that have the first two and last edge sharing a point are excluded because that would mean an enclosure with the start edge sticking out. like a traingle with a line on top.
 
-### 6/13/26
+## 6/13/26
 1. glBufferData requires a contiguous block of memory (a pointer + size)
 
-## Issues to deal with 6/13/26
+### Issues to deal with 6/13/26
 1. figure out how to break down an atomic enclosure with more than 3 vertices into triangles.
 2. figure out better way to find enclosure. Maybe until every edge has found a path.
 3. figure out how to find a way to find a coloring for this map
 4. figure out how to send 4 payloads, one for each color, to the gpu.
 
-### 6/11/26
+## 6/11/26
 1. when adding to a map, you have to make it a pair using {} or std::make_pair(1,2);
 
-### 6/7/26
+## 6/7/26
 1. if we find the smallest path back to original point, that would be the smallest atomic enclosure.
 2. going to see how to render in a color space
 3. spent all of today working on creating structs to make computation more easy. Made edge struct to make things easier later on.
 4. should've made better architectural decisions before.
 
 
-#### Stage 2 (above): Logic for adjacent enclosures
+# Stage 2 (above): Logic for adjacent enclosures
 1. I'm going to need to do is figure out how to recognize what an enclosure is (breadth-first-search)
 2. how to find adjacent enclosures (if two enclosures share a edge)
 3. map them to nodes
@@ -53,17 +89,17 @@ Automatically computed from the actual graph — shows V, E, F as cards and veri
 
 ___________________________________________________________________
 
-### 6/5/26
+## 6/5/26
 1. have to figure out how to connect to existing point if it exists for intersection
 2. figuring out if point inbetween segments had to do nearly equal due to float division.
 
 
-### 5/31/26
+## 5/31/26
 1. you have to write your own hash function for unordered_maps
 2. need to update library in cmake file whenever importing .h file
 3. Use auto instead of bool for the lambda variable type. A lambda's actual type is a unique, unnamable functor generated by the compiler. While a lambda with no captures can implicitly convert to a function pointer, using auto keeps the compiler happy and avoids implicit conversion syntax traps.
 
-### 5/30/26
+## 5/30/26
 1. const on a function makes it so that that function does not mutate anything
 2. in order for another function to see a struct funtion, always add to .h file. That's the one that is visible to other files.
 3. int& pass: by copy
@@ -71,7 +107,7 @@ ___________________________________________________________________
 5. all mousefunctions shouhld be called in the callback, not main
 6. currentConnection.insert(nearestPoint); passes a copy
 
-BUG: glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Point), (void*)0);
+###BUG: glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Point), (void*)0);
 1. told openGL that I was passing 2
 
 
@@ -79,7 +115,7 @@ BUG: glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Point), (void*)0);
 Keep double for any variables interacting with glfwGetCursorPos or local intermediate math to maintain precision.
 Keep float inside the Point struct so that the memory layout perfectly aligns with your OpenGL hardware buffers.
 
-### 5/24/26
+## 5/24/26
 1. you can't pass a member function of a class directly into a C-style function pointer that expects a regular, global function (or a static method).
 
 ### Rendering Process
