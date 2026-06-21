@@ -1,3 +1,21 @@
+### 6/20/26
+1. it's too slow to do BFS and need to look for something else.
+2. Looking at other algorithms, such as planar-facing-tracing
+3. there was issues on finding enclosures and maybe turn towards hueuristics.
+
+## How finding the enclosures work:
+# Section 1 — Rotation Systems (CCW Angle Sort)
+Go through each vertex and order them in their radial value using atan2 angle for each neighbor, and labels them in CCW order (1°, 2°, 3°…).
+
+# Section 2 — Half-Edge Rotation Rule (Face Tracing)
+Go in order of each vertex and starting from either ccw or cw, find the angle most in that direction. The idea is that you don't repeat a direction, and you "hug" a direction then you'll eventually come back to the original point and find a face.
+
+# Section 3 — Shoelace Formula (Signed Area)
+then by finding the signed area then you could tell if a face is an interior or exterior face. We then ignore the exterior face.
+
+# Section 4 — Euler's Formula
+Automatically computed from the actual graph — shows V, E, F as cards and verifies $V - E + F = 2$. This is to double check.
+
 ### 6/19/26
 1. trying to stop the search with dead branches which which would make calculations quicker: deadbranches and deadends
 
