@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Planar Face Tracing — Visual Guide</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #0f1117;
+    color: #e2e8f0;
+    line-height: 1.6;
+  }
+  h1 {
+    text-align: center;
+    padding: 32px 0 8px;
+    font-size: 2rem;
+    color: #f0f4ff;
+    letter-spacing: -0.5px;
+  }
+  .subtitle {
+    text-align: center;
+    color: #64748b;
+    margin-bottom: 40px;
+    font-size: 0.95rem;
+  }
+  .section {
+    max-width: 860px;
+    margin: 0 auto 60px;
+    padding: 0 24px;
+  }
+  .section h2 {
+    font-size: 1.35rem;
+    color: #93c5fd;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section h2 .badge {
+    font-size: 0.75rem;
+    background: #1e3a5f;
+    color: #93c5fd;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-weight: 600;
+  }
+  .section p {
+    color: #94a3b8;
+    margin-bottom: 16px;
+    font-size: 0.95rem;
+  }
+  canvas {
+    display: block;
+    margin: 0 auto;
+    border-radius: 12px;
+    background: #1a1f2e;
+    border: 1px solid #2d3748;
+  }
+  .controls {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 14px;
+    flex-wrap: wrap;
+  }
+  button {
+    background: #1e3a5f;
+    color: #93c5fd;
+    border: 1px solid #2563eb44;
+    padding: 7px 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.15s;
+  }
+  button:hover { background: #2563eb; color: #fff; }
+  button.active { background: #2563eb; color: #fff; }
+  .formula-box {
+    background: #131825;
+    border: 1px solid #2d3748;
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin: 16px 0;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    color: #a5f3fc;
+  }
+  .legend {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+    justify-content: center;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.82rem;
+    color: #94a3b8;
+  }
+  .legend-dot {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .legend-line {
+    width: 24px; height: 3px;
+    flex-shrink: 0;
+    border-radius: 2px;
+  }
+  .info-label {
+    text-align: center;
+    color: #64748b;
+    font-size: 0.82rem;
+    margin-top: 8px;
+    min-height: 20px;
+  }
+  .step-display {
+    text-align: center;
+    font-size: 0.9rem;
+    color: #e2e8f0;
+    margin-top: 10px;
+    min-height: 28px;
+    background: #131825;
+    border-radius: 8px;
+    padding: 6px 12px;
+    border: 1px solid #2d3748;
+  }
+  hr {
+    border: none;
+    border-top: 1px solid #2d3748;
+    max-width: 860px;
+    margin: 0 auto 60px;
+  }
+</style>
+</head>
+<body>
+
+<h1>Planar Face Tracing</h1>
+<p class="subtitle">Interactive visual guide — click buttons to step through each concept</p>
+
+<!-- ═══════════════════════════════════════════════════════ SECTION 1 -->
+<div class="section">
+  <h2>1. Rotation Systems <span class="badge">CCW Angle Sort</span></h2>
+  <p>At each vertex, we sort its neighbors <strong>counter-clockwise</strong> by angle using <code>atan2</code>. This cyclic ordering is called a <em>rotation system</em> — it's the only information we need to find all faces.</p>
+  <div class="formula-box">
+    angle(neighbor) = atan2(neighbor.y − v.y, neighbor.x − v.x)<br>
+    sort neighbors ascending → CCW order
+  </div>
+  <canvas id="c1" width="800" height="340"></canvas>
+  <div class="controls">
+    <button id="b1-prev">← Prev vertex</button>
+    <button id="b1-next">Next vertex →</button>
+  </div>
+  <div class="step-display" id="s1">Click "Next vertex" to highlight a vertex and see its CCW-sorted neighbors.</div>
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div> Current vertex</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#a78bfa"></div> Neighbors (CCW order)</div>
+    <div class="legend-item"><div class="legend-line" style="background:#334155"></div> Edge</div>
+  </div>
+</div>
+
+<hr>
+
+<!-- ═══════════════════════════════════════════════════════ SECTION 2 -->
+<div class="section">
+  <h2>2. Half-Edge Rotation Rule <span class="badge">Face Tracing</span></h2>
+  <p>Each undirected edge splits into two directed <strong>half-edges</strong>. The rule to move to the next half-edge in the same face: arrive at vertex <em>v</em> via <em>u→v</em>, then look up <em>u</em> in <em>v</em>'s CCW list and step <strong>one position clockwise</strong> (= one step backward) to find the next neighbor <em>w</em>. Follow <em>v→w</em>. Repeat until you return to the start — that loop is one face.</p>
+  <div class="formula-box">
+    φ(u→v) = v→w,  where w = CCW_neighbors[v][ (index_of_u − 1) mod degree(v) ]
+  </div>
+  <canvas id="c2" width="800" height="380"></canvas>
+  <div class="controls">
+    <button id="b2-reset">Reset</button>
+    <button id="b2-step">Step →</button>
+    <button id="b2-auto" id="">Auto Play</button>
+    <button id="b2-face">Next Face</button>
+  </div>
+  <div class="step-display" id="s2">Press "Step" to trace half-edges one at a time, or "Auto Play" to animate.</div>
+  <div class="legend">
+    <div class="legend-item"><div class="legend-line" style="background:#334155"></div> Edge</div>
+    <div class="legend-item"><div class="legend-line" style="background:#f59e0b"></div> Current half-edge</div>
+    <div class="legend-item"><div class="legend-line" style="background:#10b981"></div> Face traced so far</div>
+    <div class="legend-item"><div class="legend-line" style="background:#6366f1"></div> Completed faces</div>
+  </div>
+</div>
+
+<hr>
+
+<!-- ═══════════════════════════════════════════════════════ SECTION 3 -->
+<div class="section">
+  <h2>3. Shoelace Formula <span class="badge">Signed Area</span></h2>
+  <p>After tracing a face we get an ordered list of points. The <strong>shoelace formula</strong> gives a signed area — positive means CCW (interior face ✅), negative means CW (outer face ❌).</p>
+  <div class="formula-box">
+    A = ½ · Σ (xᵢ·yᵢ₊₁ − xᵢ₊₁·yᵢ)   for i = 0…n−1 (mod n)<br><br>
+    A &gt; 0  →  CCW winding  →  interior face  ✅<br>
+    A &lt; 0  →  CW  winding  →  outer face     ❌
+  </div>
+  <canvas id="c3" width="800" height="360"></canvas>
+  <div class="controls">
+    <button id="b3-ccw">Show CCW face (interior ✅)</button>
+    <button id="b3-cw">Show CW face (outer ❌)</button>
+    <button id="b3-step">Step through sum</button>
+    <button id="b3-reset">Reset</button>
+  </div>
+  <div class="step-display" id="s3">Choose a face type to begin.</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ SECTION 4 -->
+<div class="section">
+  <h2>4. Euler's Formula <span class="badge">Sanity Check</span></h2>
+  <p>After running the algorithm you can verify all faces were found correctly:</p>
+  <div class="formula-box">
+    V − E + F = 2   (F includes the 1 outer unbounded face)<br><br>
+    ∴  interior faces = E − V + 1
+  </div>
+  <canvas id="c4" width="800" height="200"></canvas>
+  <div class="step-display" id="s4"></div>
+</div>
+
+<script>
+// ─── shared helpers ──────────────────────────────────────────────────────────
+function arrow(ctx, x1,y1,x2,y2,color,width=2,headSize=10){
+  ctx.save();
+  ctx.strokeStyle=color; ctx.fillStyle=color; ctx.lineWidth=width;
+  const dx=x2-x1,dy=y2-y1,len=Math.hypot(dx,dy);
+  const ux=dx/len,uy=dy/len;
+  const mx=(x1+x2)/2,my=(y1+y2)/2;
+  // draw from midpoint to give room for arrowhead
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  const angle=Math.atan2(dy,dx);
+  ctx.beginPath();
+  ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-headSize*Math.cos(angle-0.4),y2-headSize*Math.sin(angle-0.4));
+  ctx.lineTo(x2-headSize*Math.cos(angle+0.4),y2-headSize*Math.sin(angle+0.4));
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+function circle(ctx,x,y,r,fill,stroke,sw=2){
+  ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2);
+  if(fill){ctx.fillStyle=fill;ctx.fill();}
+  if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=sw;ctx.stroke();}
+}
+function label(ctx,text,x,y,color='#e2e8f0',size=13,bold=false){
+  ctx.save();
+  ctx.font=(bold?'bold ':'')+size+'px system-ui';
+  ctx.fillStyle=color;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(text,x,y);
+  ctx.restore();
+}
+function clearCanvas(c){ c.getContext('2d').clearRect(0,0,c.width,c.height); }
+
+// ─── GRAPH used in sections 1 & 2 ───────────────────────────────────────────
+const V = [
+  {x:400,y:80,  name:'A'},
+  {x:620,y:180, name:'B'},
+  {x:580,y:310, name:'C'},
+  {x:320,y:310, name:'D'},
+  {x:180,y:180, name:'E'},
+  {x:400,y:210, name:'F'},
+];
+const E = [[0,1],[1,2],[2,3],[3,4],[4,0],[0,5],[1,5],[2,5],[3,5],[4,5]];
+
+// build CCW adjacency
+function buildAdj(verts,edges){
+  const adj = verts.map(()=>[]);
+  for(const [a,b] of edges){
+    adj[a].push(b); adj[b].push(a);
+  }
+  for(let i=0;i<verts.length;i++){
+    adj[i].sort((a,b)=>{
+      const va=verts[i], na=verts[a], nb=verts[b];
+      return Math.atan2(na.y-va.y,na.x-va.x) - Math.atan2(nb.y-va.y,nb.x-va.x);
+    });
+  }
+  return adj;
+}
+const adj = buildAdj(V,E);
+
+// ─── SECTION 1: Rotation system ─────────────────────────────────────────────
+{
+  const c=document.getElementById('c1');
+  const ctx=c.getContext('2d');
+  let cur=-1;
+
+  function drawS1(){
+    ctx.clearRect(0,0,c.width,c.height);
+    // edges
+    for(const [a,b] of E){
+      ctx.beginPath();
+      ctx.moveTo(V[a].x,V[a].y);
+      ctx.lineTo(V[b].x,V[b].y);
+      ctx.strokeStyle='#334155'; ctx.lineWidth=2; ctx.stroke();
+    }
+    // if a vertex selected, show angle arcs to each neighbor
+    if(cur>=0){
+      const v=V[cur];
+      const neighbors=adj[cur];
+      // draw angle arc
+      neighbors.forEach((ni,rank)=>{
+        const n=V[ni];
+        const angle=Math.atan2(n.y-v.y,n.x-v.x);
+        const hue=200+rank*40;
+        const col=`hsl(${hue},80%,65%)`;
+        // colored edge
+        ctx.beginPath();
+        ctx.moveTo(v.x,v.y); ctx.lineTo(n.x,n.y);
+        ctx.strokeStyle=col; ctx.lineWidth=3; ctx.stroke();
+        // arc from east going CCW
+        ctx.beginPath();
+        ctx.arc(v.x,v.y,34,0,angle,angle<0);
+        ctx.strokeStyle=col+'88'; ctx.lineWidth=1.5; ctx.stroke();
+        // rank label near neighbor
+        const mx=(v.x+n.x)/2, my=(v.y+n.y)/2;
+        circle(ctx,mx,my,11,'#1a1f2e',col,1.5);
+        label(ctx,rank+1+'°',mx,my,col,10);
+        // angle text
+        const deg=(angle*180/Math.PI).toFixed(1);
+        const tx=n.x+(n.x-v.x)*0.18, ty=n.y+(n.y-v.y)*0.18;
+        label(ctx,`${V[ni].name}: ${deg}°`,tx,ty,'#94a3b8',11);
+      });
+    }
+    // vertices
+    for(let i=0;i<V.length;i++){
+      const active=i===cur;
+      circle(ctx,V[i].x,V[i].y,active?16:12,
+        active?'#3b82f6':'#1e3a5f',
+        active?'#93c5fd':'#4a6fa5',2);
+      label(ctx,V[i].name,V[i].x,V[i].y,'#f0f4ff',13,true);
+    }
+  }
+
+  function updateS1(){
+    const v=V[cur];
+    const neighbors=adj[cur].map((ni,r)=>`${V[ni].name}(${(Math.atan2(V[ni].y-v.y,V[ni].x-v.x)*180/Math.PI).toFixed(0)}°)`).join(' → ');
+    document.getElementById('s1').textContent =
+      cur<0 ? 'Click "Next vertex" to begin.'
+             : `Vertex ${v.name}: CCW order = ${neighbors}`;
+    drawS1();
+  }
+
+  document.getElementById('b1-next').onclick=()=>{ cur=(cur+1)%V.length; updateS1(); };
+  document.getElementById('b1-prev').onclick=()=>{ cur=(cur-1+V.length)%V.length; updateS1(); };
+  drawS1();
+}
+
+// ─── SECTION 2: Half-edge tracing ───────────────────────────────────────────
+{
+  const c=document.getElementById('c2');
+  const ctx=c.getContext('2d');
+
+  // enumerate all half-edges and trace faces
+  function traceFaces(){
+    const used=new Set();
+    const faces=[];
+    const key=(a,b)=>`${a},${b}`;
+    for(const [a,b] of E){
+      for(const [fr,to] of [[a,b],[b,a]]){
+        if(used.has(key(fr,to))) continue;
+        const face=[];
+        let cf=fr,ct=to;
+        for(let s=0;s<E.length*2+2;s++){
+          if(used.has(key(cf,ct))) break;
+          used.add(key(cf,ct));
+          face.push([cf,ct]);
+          const nb=adj[ct];
+          const idx=nb.indexOf(cf);
+          if(idx<0) break;
+          const ni=(idx-1+nb.length)%nb.length;
+          const nxt=nb[ni];
+          cf=ct; ct=nxt;
+        }
+        if(face.length>=3) faces.push(face);
+      }
+    }
+    // compute signed area, split interior vs outer
+    return faces.map(face=>{
+      const pts=face.map(([a])=>a);
+      let area=0;
+      for(let i=0;i<pts.length;i++){
+        const a=V[pts[i]], b=V[pts[(i+1)%pts.length]];
+        area+=(a.x*b.y-b.x*a.y);
+      }
+      area/=2;
+      return {halfEdges:face, area, interior:area>0};
+    });
+  }
+
+  const faces=traceFaces();
+  const interiorFaces=faces.filter(f=>f.interior);
+
+  // flatten all half-edges in order
+  const allSteps=[];
+  for(const face of faces){
+    for(const he of face.halfEdges) allSteps.push({he,face});
+  }
+
+  let step=0;
+  let faceIdx=0; // which face we're viewing
+  let autoTimer=null;
+  let viewFace=null; // null = show all steps
+
+  const faceColors=['#6366f1','#8b5cf6','#ec4899','#f59e0b','#10b981','#06b6d4'];
+
+  function offsetEdge(x1,y1,x2,y2,offset=5){
+    const dx=x2-x1,dy=y2-y1,len=Math.hypot(dx,dy);
+    const ox=-dy/len*offset, oy=dx/len*offset;
+    return [x1+ox,y1+oy,x2+ox,y2+oy];
+  }
+
+  function drawS2(){
+    ctx.clearRect(0,0,c.width,c.height);
+
+    // base edges
+    for(const [a,b] of E){
+      ctx.beginPath();
+      ctx.moveTo(V[a].x,V[a].y); ctx.lineTo(V[b].x,V[b].y);
+      ctx.strokeStyle='#2d3748'; ctx.lineWidth=2; ctx.stroke();
+    }
+
+    // shade completed interior faces
+    for(let fi=0;fi<interiorFaces.length;fi++){
+      const face=interiorFaces[fi];
+      // check if all half edges of this face have been stepped through
+      const doneHEs=new Set(allSteps.slice(0,step).filter(s=>s.face===face).map(s=>s.he.toString()));
+      const allDone=face.halfEdges.every(he=>doneHEs.has(he.toString())||true);
+      // shade if fully traced
+      const tracedCount=allSteps.slice(0,step).filter(s=>s.face===face).length;
+      if(tracedCount===face.halfEdges.length){
+        ctx.beginPath();
+        const pts=face.halfEdges.map(([a])=>V[a]);
+        ctx.moveTo(pts[0].x,pts[0].y);
+        pts.slice(1).forEach(p=>ctx.lineTo(p.x,p.y));
+        ctx.closePath();
+        ctx.fillStyle=faceColors[fi%faceColors.length]+'33';
+        ctx.fill();
+      }
+    }
+
+    // draw half-edges traced so far
+    const curFace=step>0?allSteps[step-1].face:null;
+    for(let i=0;i<step;i++){
+      const {he,face}=allSteps[i];
+      const [a,b]=he;
+      const [x1,y1,x2,y2]=offsetEdge(V[a].x,V[a].y,V[b].x,V[b].y,5);
+      const fi=faces.indexOf(face);
+      const col= (i===step-1) ? '#f59e0b' : (face===curFace ? '#10b981' : faceColors[fi%faceColors.length]+'99');
+      const w= i===step-1 ? 3 : 2;
+      arrow(ctx,x1,y1,x2,y2,col,w,9);
+    }
+
+    // vertices
+    for(let i=0;i<V.length;i++){
+      circle(ctx,V[i].x,V[i].y,13,'#1a1f2e','#4a6fa5',2);
+      label(ctx,V[i].name,V[i].x,V[i].y,'#f0f4ff',13,true);
+    }
+
+    // status
+    if(step>0){
+      const cur=allSteps[step-1];
+      const [a,b]=cur.he;
+      const fi=faces.indexOf(cur.face);
+      const ftype=cur.face.interior?'interior':'outer';
+      document.getElementById('s2').textContent=
+        `Step ${step}/${allSteps.length}: half-edge ${V[a].name}→${V[b].name}  |  Face ${fi+1} (${ftype}, ${cur.face.halfEdges.length} edges)`;
+    } else {
+      document.getElementById('s2').textContent='Press "Step" to trace half-edges one at a time.';
+    }
+  }
+
+  document.getElementById('b2-step').onclick=()=>{
+    if(step<allSteps.length) step++;
+    drawS2();
+  };
+  document.getElementById('b2-reset').onclick=()=>{
+    step=0; clearInterval(autoTimer); autoTimer=null;
+    document.getElementById('b2-auto').textContent='Auto Play';
+    drawS2();
+  };
+  document.getElementById('b2-auto').onclick=function(){
+    if(autoTimer){ clearInterval(autoTimer); autoTimer=null; this.textContent='Auto Play'; return; }
+    this.textContent='⏸ Pause';
+    autoTimer=setInterval(()=>{
+      if(step>=allSteps.length){ clearInterval(autoTimer); autoTimer=null;
+        document.getElementById('b2-auto').textContent='Auto Play'; return; }
+      step++; drawS2();
+    },300);
+  };
+  document.getElementById('b2-face').onclick=()=>{
+    // jump to start of next face
+    if(step>=allSteps.length){ step=0; drawS2(); return; }
+    const curFace=step>0?allSteps[step-1].face:null;
+    let i=step;
+    while(i<allSteps.length && allSteps[i].face===curFace) i++;
+    step=i; drawS2();
+  };
+
+  drawS2();
+}
+
+// ─── SECTION 3: Shoelace ─────────────────────────────────────────────────────
+{
+  const c=document.getElementById('c3');
+  const ctx=c.getContext('2d');
+
+  const cx=400,cy=185,R=120;
+  function polyPts(n,cx,cy,r,startAngle=0,cw=false){
+    return Array.from({length:n},(_,i)=>{
+      const a=startAngle+(cw?1:-1)*i*2*Math.PI/n;
+      return {x:cx+r*Math.cos(a),y:cy+r*Math.sin(a)};
+    });
+  }
+
+  let pts=null, stepIdx=-1, mode=null;
+  let terms=[];
+
+  function computeTerms(pts){
+    const n=pts.length;
+    return pts.map((p,i)=>{
+      const q=pts[(i+1)%n];
+      return p.x*q.y - q.x*p.y;
+    });
+  }
+
+  function drawS3(){
+    ctx.clearRect(0,0,c.width,c.height);
+    if(!pts){
+      label(ctx,'Choose a face type above.',400,185,'#64748b',18);
+      return;
+    }
+    const n=pts.length;
+
+    // fill polygon
+    ctx.beginPath(); ctx.moveTo(pts[0].x,pts[0].y);
+    pts.slice(1).forEach(p=>ctx.lineTo(p.x,p.y));
+    ctx.closePath();
+    const isPos=terms.reduce((s,t)=>s+t,0)>0;
+    ctx.fillStyle=isPos?'#10b98122':'#ef444422';
+    ctx.fill();
+
+    // draw shoelace triangles up to stepIdx
+    for(let i=0;i<=stepIdx&&i<n;i++){
+      const p=pts[i],q=pts[(i+1)%n];
+      // triangle from origin-like center
+      const ox=400,oy=185; // visual origin
+      ctx.beginPath();
+      ctx.moveTo(ox,oy); ctx.lineTo(p.x,p.y); ctx.lineTo(q.x,q.y);
+      ctx.closePath();
+      const t=terms[i];
+      ctx.fillStyle=t>=0?'#10b98144':'#ef444444';
+      ctx.fill();
+      ctx.strokeStyle=t>=0?'#10b98188':'#ef444488';
+      ctx.lineWidth=1; ctx.stroke();
+      // term label
+      const mx=(ox+p.x+q.x)/3,my=(oy+p.y+q.y)/3;
+      label(ctx,(t>=0?'+':'')+t.toFixed(0),mx,my,t>=0?'#6ee7b7':'#fca5a5',11);
+    }
+
+    // polygon edges
+    for(let i=0;i<n;i++){
+      const a=pts[i],b=pts[(i+1)%n];
+      const active=i===stepIdx;
+      ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y);
+      ctx.strokeStyle=active?'#f59e0b':'#6366f1';
+      ctx.lineWidth=active?3:2; ctx.stroke();
+      if(active){
+        // show the cross product visually
+        arrow(ctx,a.x,a.y,b.x,b.y,'#f59e0b',3,10);
+      }
+    }
+
+    // points
+    pts.forEach((p,i)=>{
+      circle(ctx,p.x,p.y,8,'#1e3a5f','#93c5fd',2);
+      const angle=Math.atan2(p.y-cy,p.x-cx);
+      label(ctx,`P${i}`,p.x+18*Math.cos(angle),p.y+18*Math.sin(angle),'#94a3b8',12);
+    });
+
+    // winding arrow in center
+    const wdir=isPos?'↺ CCW':'↻ CW';
+    const wcol=isPos?'#10b981':'#ef4444';
+    label(ctx,wdir,cx,cy+R+32,wcol,15,true);
+
+    // running sum
+    const partialSum=terms.slice(0,stepIdx+1).reduce((s,t)=>s+t,0);
+    const finalArea=terms.reduce((s,t)=>s+t,0)/2;
+    if(stepIdx>=0){
+      label(ctx,`Running sum: ${partialSum.toFixed(1)}`,400,310,'#94a3b8',13);
+    }
+    if(stepIdx>=n-1){
+      label(ctx,`Signed Area A = ${finalArea.toFixed(1)}  →  ${isPos?'interior ✅':'outer face ❌'}`,400,335,isPos?'#10b981':'#ef4444',14,true);
+    }
+
+    // update status
+    if(stepIdx<0){
+      document.getElementById('s3').textContent='Press "Step through sum" to see each triangle contribution.';
+    } else if(stepIdx<n-1){
+      const t=terms[stepIdx];
+      document.getElementById('s3').textContent=
+        `Term ${stepIdx+1}: x${stepIdx}·y${(stepIdx+1)%n} − x${(stepIdx+1)%n}·y${stepIdx} = ${t.toFixed(1)}  (${t>=0?'adds area +':'subtracts area −'})`;
+    } else {
+      document.getElementById('s3').textContent=
+        `Done! A = ½·${terms.reduce((s,t)=>s+t,0).toFixed(1)} = ${finalArea.toFixed(1)}  →  ${isPos?'Positive = CCW = interior face ✅':'Negative = CW = outer face ❌'}`;
+    }
+  }
+
+  document.getElementById('b3-ccw').onclick=()=>{
+    pts=polyPts(5,cx,cy,R,-Math.PI/2,false); // CCW
+    terms=computeTerms(pts); stepIdx=-1; drawS3();
+  };
+  document.getElementById('b3-cw').onclick=()=>{
+    pts=polyPts(5,cx,cy,R,-Math.PI/2,true); // CW
+    terms=computeTerms(pts); stepIdx=-1; drawS3();
+  };
+  document.getElementById('b3-step').onclick=()=>{
+    if(!pts) return;
+    stepIdx=Math.min(stepIdx+1,pts.length-1); drawS3();
+  };
+  document.getElementById('b3-reset').onclick=()=>{ stepIdx=-1; drawS3(); };
+
+  drawS3();
+}
+
+// ─── SECTION 4: Euler's formula ──────────────────────────────────────────────
+{
+  const c=document.getElementById('c4');
+  const ctx=c.getContext('2d');
+
+  // count for our graph
+  const Vn=V.length, En=E.length;
+  // trace faces
+  function countFaces(){
+    const used=new Set(); const key=(a,b)=>`${a},${b}`; let f=0;
+    for(const [a,b] of E){
+      for(const [fr,to] of [[a,b],[b,a]]){
+        if(used.has(key(fr,to))) continue;
+        let cf=fr,ct=to; let face=[];
+        for(let s=0;s<En*2+2;s++){
+          if(used.has(key(cf,ct))) break;
+          used.add(key(cf,ct)); face.push(cf);
+          const nb=adj[ct]; const idx=nb.indexOf(cf);
+          if(idx<0) break;
+          const ni=(idx-1+nb.length)%nb.length; const nxt=nb[ni];
+          cf=ct; ct=nxt;
+        }
+        if(face.length>=3) f++;
+      }
+    }
+    return f;
+  }
+  const Fn=countFaces();
+  const interior=Fn-1;
+
+  ctx.clearRect(0,0,c.width,c.height);
+  const items=[
+    {label:'V (vertices)', val:Vn, col:'#3b82f6'},
+    {label:'E (edges)',    val:En, col:'#a78bfa'},
+    {label:'F (faces, incl. outer)', val:Fn, col:'#10b981'},
+    {label:'V−E+F',        val:Vn-En+Fn, col:'#f59e0b'},
+  ];
+  const bw=160,bh=80,gap=20,startX=(800-(items.length*(bw+gap)-gap))/2,y=50;
+  items.forEach(({label:lb,val,col},i)=>{
+    const x=startX+i*(bw+gap);
+    ctx.beginPath();
+    ctx.roundRect(x,y,bw,bh,10);
+    ctx.fillStyle=col+'22'; ctx.fill();
+    ctx.strokeStyle=col+'88'; ctx.lineWidth=1.5; ctx.stroke();
+    label(ctx,lb,x+bw/2,y+24,col,11);
+    label(ctx,String(val),x+bw/2,y+52,'#f0f4ff',28,true);
+  });
+  document.getElementById('s4').textContent=
+    `V=${Vn},  E=${En},  F=${Fn}  →  ${Vn}−${En}+${Fn} = ${Vn-En+Fn} ✓   |   Interior faces = E−V+1 = ${En}−${Vn}+1 = ${interior}`;
+}
+</script>
+</body>
+</html>

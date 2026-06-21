@@ -1,7 +1,20 @@
 ### 6/20/26
 1. it's too slow to do BFS and need to look for something else.
 2. Looking at other algorithms, such as planar-facing-tracing
-3.
+3. there was issues on finding enclosures and maybe turn towards hueuristics.
+
+## How finding the enclosures work:
+# Section 1 — Rotation Systems (CCW Angle Sort)
+Click "Next vertex →" to cycle through each vertex (A–F). It highlights the vertex in blue, draws each neighbor edge in a different color, shows the atan2 angle for each neighbor, and labels them in CCW order (1°, 2°, 3°…).
+
+# Section 2 — Half-Edge Rotation Rule (Face Tracing)
+Click "Step →" to advance one half-edge at a time. The current half-edge is shown in amber, the current face being traced in green, and completed faces are shaded in purple. Use "Auto Play" to animate the full traversal, or "Next Face" to jump between faces.
+
+# Section 3 — Shoelace Formula (Signed Area)
+Click "Show CCW face" or "Show CW face" to load a polygon, then "Step through sum" to see each triangle contribution to the sum — green triangles add area (+), red ones subtract (−). At the end it shows the final signed area and whether the face is interior ✅ or outer ❌.
+
+# Section 4 — Euler's Formula
+Automatically computed from the actual graph — shows V, E, F as cards and verifies $V - E + F = 2$.
 
 ### 6/19/26
 1. trying to stop the search with dead branches which which would make calculations quicker: deadbranches and deadends

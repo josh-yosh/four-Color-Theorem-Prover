@@ -56,7 +56,8 @@ set<AtomicEnclosure> findAtomicEnclosures(const set<Edge>& edges) {
     auto findNeighborIndex = [&](const Point& center, const Point& target) -> int {
         const vector<Point>& neighbors = adjacency.at(center);
         for (int i = 0; i < (int)neighbors.size(); i++) {
-            if (nearlyEqual(neighbors[i], target)) return i;
+            // Use exact float comparison: points come from the same set<Point> storage
+            if (neighbors[i].x == target.x && neighbors[i].y == target.y) return i;
         }
         return -1;
     };
@@ -106,7 +107,7 @@ set<AtomicEnclosure> findAtomicEnclosures(const set<Edge>& edges) {
             }
             signedArea /= 2.0;
 
-            if (signedArea >= 0.0) continue; // skip outer/CCW face
+            if (signedArea <= 0.0) continue; // skip outer face (CW = negative area); keep interior faces (CCW = positive area)
 
             set<Point> facePointSet(facePoints.begin(), facePoints.end());
             allAtomicEnclosures.insert(AtomicEnclosure(facePointSet, faceEdges));
