@@ -31,3 +31,9 @@ cmake --build --preset macos-arm-debug
 # Run
 ./build/macos-arm/Debug/my_executable
 ```
+
+Example:
+
+https://github.com/user-attachments/assets/c2f027f1-4e11-4d77-881e-da9b72af422f
+
+
