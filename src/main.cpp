@@ -15,6 +15,7 @@
 #include "lineAndPointLogic.h"
 #include "AtomicEnclosure.h"
 #include "colorLogic.h"
+#include "triangulation.h"
 using namespace std;
 
 int windowWidth = 800;
@@ -44,7 +45,23 @@ void window_size_callback(GLFWwindow* window, int width, int height) {
 // Mouse button callback function
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
     if(ConnectingPoints(window, button, action, clickedPoints, currentConnection, allEdges, intersectionPoints, isConnecting, pointToEdgeMap, allAtomicEnclosures)) {
-        cout << isConnecting << endl;
+        // Print the most recently added edge (last in the set)
+        if (!allEdges.empty()) {
+            const Edge& newest = *allEdges.rbegin();
+            cout << "[Edge Added] ("
+                 << newest.p1().x << ", " << newest.p1().y << ") -> ("
+                 << newest.p2().x << ", " << newest.p2().y << ")\n";
+        }
+
+        // Print all current edges
+        cout << "[All Edges — " << allEdges.size() << " total]\n";
+        int i = 1;
+        for (const Edge& e : allEdges) {
+            cout << "  " << i++ << ". ("
+                 << e.p1().x << ", " << e.p1().y << ") -> ("
+                 << e.p2().x << ", " << e.p2().y << ")\n";
+        }
+
         allAtomicEnclosures = findAtomicEnclosures(allEdges);
     } else if (!isConnecting){
         // If not connecting points, check for new point creation
@@ -68,6 +85,24 @@ struct Engine {
         "void main()\n"
         "{\n"
         " gl_Position = vec4(aPos.x, aPos.y, 0.0, 1.0);\n"
+        "}\0";
+
+    const char *geometryShaderSource = "#version 330 core\n"
+        "layout (lines) in;\n"
+        "layout (triangle_strip, max_vertices = 4) out;\n"
+        "uniform vec2 uViewport;\n"
+        "uniform float uLineWidth;\n"
+        "void main() {\n"
+        "    vec2 p0 = gl_in[0].gl_Position.xy;\n"
+        "    vec2 p1 = gl_in[1].gl_Position.xy;\n"
+        "    vec2 dir = normalize((p1 - p0) * uViewport * 0.5);\n"
+        "    vec2 normal = vec2(-dir.y, dir.x);\n"
+        "    vec2 offset = normal * uLineWidth / uViewport;\n"
+        "    gl_Position = vec4(p0 + offset, 0.0, 1.0); EmitVertex();\n"
+        "    gl_Position = vec4(p0 - offset, 0.0, 1.0); EmitVertex();\n"
+        "    gl_Position = vec4(p1 + offset, 0.0, 1.0); EmitVertex();\n"
+        "    gl_Position = vec4(p1 - offset, 0.0, 1.0); EmitVertex();\n"
+        "    EndPrimitive();\n"
         "}\0";
 
     int failedGlfwWindow(GLFWwindow* window) {
@@ -128,6 +163,19 @@ struct Engine {
         fragmentShaderErrorCheck(fragmentShader);
     }
 
+    void geometryShaderSetup(unsigned int &geometryShader) {
+        geometryShader = glCreateShader(GL_GEOMETRY_SHADER);
+        glShaderSource(geometryShader, 1, &geometryShaderSource, NULL);
+        glCompileShader(geometryShader);
+        int success;
+        char infoLog[512];
+        glGetShaderiv(geometryShader, GL_COMPILE_STATUS, &success);
+        if (!success) {
+            glGetShaderInfoLog(geometryShader, 512, NULL, infoLog);
+            std::cout << "ERROR::SHADER::GEOMETRY::COMPILATION_FAILED\n" << infoLog << std::endl;
+        }
+    }
+
     void shaderProgramErrorCheck(unsigned int shaderProgram) {
         int success;
         char infoLog[512];
@@ -163,10 +211,24 @@ struct Engine {
         glLinkProgram(program);
         shaderProgramErrorCheck(program);
 
-        // Once linked into the program, we can delete the individual shader objects
         glDeleteShader(vertexShader);
         glDeleteShader(fragmentShader);
-        
+
+        return program;
+    }
+
+    unsigned int createLineShaderProgram(unsigned int vertexShader, unsigned int geometryShader, unsigned int fragmentShader) {
+        unsigned int program = glCreateProgram();
+        glAttachShader(program, vertexShader);
+        glAttachShader(program, geometryShader);
+        glAttachShader(program, fragmentShader);
+        glLinkProgram(program);
+        shaderProgramErrorCheck(program);
+
+        glDeleteShader(vertexShader);
+        glDeleteShader(geometryShader);
+        glDeleteShader(fragmentShader);
+
         return program;
     }
 
@@ -199,9 +261,15 @@ struct Engine {
 
         //shader setup
         unsigned int vertexShader, fragmentShader;
-        vertexShaderSetup(vertexShader); // Compile vertex shader
-        fragmentShaderSetup(fragmentShader); // Compile fragment shader
-        unsigned int shaderProgram = createShaderProgram(vertexShader, fragmentShader); // Link shaders into a program
+        vertexShaderSetup(vertexShader);
+        fragmentShaderSetup(fragmentShader);
+        unsigned int shaderProgram = createShaderProgram(vertexShader, fragmentShader);
+
+        unsigned int lineVertShader, lineGeomShader, lineFragShader;
+        vertexShaderSetup(lineVertShader);
+        geometryShaderSetup(lineGeomShader);
+        fragmentShaderSetup(lineFragShader);
+        unsigned int lineShaderProgram = createLineShaderProgram(lineVertShader, lineGeomShader, lineFragShader);
 
         //creating VAO and VBO for rendering points
         unsigned int VAO, VBO;
@@ -211,9 +279,7 @@ struct Engine {
         glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Point), (void*)0);
         glEnableVertexAttribArray(0);
 
-        // Make points larger so they are easy to see
         glPointSize(10.0f);
-        glLineWidth(2.0f); // Set line width for connections
 
         // render loop
         while(!glfwWindowShouldClose(window)){
@@ -233,7 +299,7 @@ struct Engine {
             if(hasAtomicEnclosures){
                 for (const AtomicEnclosure& atomicEnclosure : allAtomicEnclosures) {
                     vector<Point> boundary = orderEnclosureBoundary(atomicEnclosure);
-                    vector<Point> triangles = fanTriangulate(boundary);
+                    vector<Point> triangles = earClipTriangulate(boundary);
                     if (triangles.empty()) continue;
 
                     glUniform4f(colorLoc, 0.0f, 1.0f, 0.0f, 1.0f);
@@ -262,44 +328,49 @@ struct Engine {
                 glDrawArrays(GL_POINTS, 0, pointsToRender.size());
             }
 
+            int fbW, fbH;
+            glfwGetFramebufferSize(window, &fbW, &fbH);
+
             //if we have an active connection, draw a line between the two points
             if(isConnecting){
                 double ndcX, ndcY;
                 getCursorPositionInNDC(window, ndcX, ndcY);
                 vector<Point> currentLine = {*(currentConnection.begin()), Point(ndcX, ndcY)};
 
-                glBindBuffer(GL_ARRAY_BUFFER, VBO);
-                // Upload the dynamic vector data to the GPU
-                glBufferData(GL_ARRAY_BUFFER, currentLine.size() * sizeof(Point), &currentLine[0], GL_DYNAMIC_DRAW);
+                glUseProgram(lineShaderProgram);
+                glUniform4f(glGetUniformLocation(lineShaderProgram, "uColor"), 1.0f, 1.0f, 1.0f, 1.0f);
+                glUniform2f(glGetUniformLocation(lineShaderProgram, "uViewport"), (float)fbW, (float)fbH);
+                glUniform1f(glGetUniformLocation(lineShaderProgram, "uLineWidth"), 3.0f);
 
-                // Bind shaders here if youc are using custom ones
+                glBindBuffer(GL_ARRAY_BUFFER, VBO);
+                glBufferData(GL_ARRAY_BUFFER, currentLine.size() * sizeof(Point), &currentLine[0], GL_DYNAMIC_DRAW);
                 glBindVertexArray(VAO);
-                // Draw all the points we've collected so far
                 glDrawArrays(GL_LINES, 0, currentLine.size());
 
+                glUseProgram(shaderProgram);
             }
 
             bool hasConnections = !allEdges.empty();
             if(hasConnections){
-                // 1. Flatten all connections into one continuous vector first
                 vector<Point> linesToDraw;
                 for (const auto& edge : allEdges) {
                     linesToDraw.push_back(edge.p1());
                     linesToDraw.push_back(edge.p2());
                 }
 
-                // 2. Only perform GPU operations if there is actually data to draw
                 if (!linesToDraw.empty()) {
-                    // Bind everything ONCE
+                    glUseProgram(lineShaderProgram);
+                    glUniform4f(glGetUniformLocation(lineShaderProgram, "uColor"), 1.0f, 1.0f, 1.0f, 1.0f);
+                    glUniform2f(glGetUniformLocation(lineShaderProgram, "uViewport"), (float)fbW, (float)fbH);
+                    glUniform1f(glGetUniformLocation(lineShaderProgram, "uLineWidth"), 3.0f);
+
                     glBindVertexArray(VAO);
                     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-                    
-                    // Upload ALL line data at once
                     glBufferData(GL_ARRAY_BUFFER, linesToDraw.size() * sizeof(Point), &linesToDraw[0], GL_DYNAMIC_DRAW);
-
-                    // Draw ALL lines with a single GPU command
                     glDrawArrays(GL_LINES, 0, linesToDraw.size());
-                }                
+
+                    glUseProgram(shaderProgram);
+                }
             }
 
             // Mouse coordinate overlay (top-right)
@@ -329,6 +400,7 @@ struct Engine {
         ImGui_ImplGlfw_Shutdown();
         ImGui::DestroyContext();
         glDeleteProgram(shaderProgram);
+        glDeleteProgram(lineShaderProgram);
         cleanup(VAO, VBO);
     }
 

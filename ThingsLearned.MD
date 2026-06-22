@@ -3,6 +3,8 @@
 2. Monotone polygon is if ever line orthogonal to a "main" line, like an axis, hits two edges of the polygon 2x. if it's more or less than it's not monotone polygon.
 3. we can break up our non-monotone polygon into multiple monotone polygons.
 4. it doesn't seem that computationally complex as in it's (n log n)
+5. with further research, since we're not dealing with super large faces, then we can just do ear clipping.
+6. convex vertex is when the larger angle is on the outside of the face and the smaller angle is on the inside. It's to determin if it causes it to go inside the polygon.
 
 ## Polygon Triangulation Algorithms
 

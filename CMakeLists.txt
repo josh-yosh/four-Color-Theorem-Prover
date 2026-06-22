@@ -30,6 +30,8 @@ add_library(PointLib
     src/lineAndPointLogic.cpp
     src/colorLogic.h
     src/colorLogic.cpp
+    src/triangulation.h
+    src/triangulation.cpp
     src/AtomicEnclosure.h
     src/AtomicEnclosure.cpp
     src/Path.cpp

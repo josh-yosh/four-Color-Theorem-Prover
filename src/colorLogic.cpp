@@ -5,31 +5,13 @@
 #include <queue>
 #include <cmath>
 #include <algorithm>
+#include <iostream>
 #include "colorLogic.h"
 #include "AtomicEnclosure.h"
 #include "Path.h"
 
 
-set<AtomicEnclosure> findAtomicEnclosures(const set<Point>& points, const set<Edge>& edges) {
-    unordered_map<Point, set<Edge>> pointToEdgeMap = createPointToEdgeMap(points, edges);
-    set<AtomicEnclosure> allAtomicEnclosures;
-
-    for(Point point : points){
-        set<Path> shortestPaths = findShortestPaths(pointToEdgeMap, point);
-
-        for(const Path& path : shortestPaths){
-            set<Point> pointsInPath;
-
-            for(const Edge& edge : path.edges){
-                pointsInPath.insert(edge.endpoints.begin(), edge.endpoints.end());
-            }
-
-            allAtomicEnclosures.insert(AtomicEnclosure(pointsInPath, path.edges));
-        }
-    }
-
-    return allAtomicEnclosures;
-}
+// ── Used functions ────────────────────────────────────────────────────────────
 
 set<AtomicEnclosure> findAtomicEnclosures(const set<Edge>& edges) {
     // Build adjacency: point -> list of neighbors sorted by angle (CCW)
@@ -62,12 +44,17 @@ set<AtomicEnclosure> findAtomicEnclosures(const set<Edge>& edges) {
         return -1;
     };
 
+    cout << "\n[findAtomicEnclosures] Starting — " << edges.size() << " edges\n";
+
     for (const Edge& startEdge : edges) {
         for (int dir = 0; dir < 2; dir++) {
             Point from = (dir == 0) ? startEdge.p1() : startEdge.p2();
             Point to   = (dir == 0) ? startEdge.p2() : startEdge.p1();
 
             if (usedHalfEdges.count({from, to})) continue;
+
+            cout << "  [Half-edge] (" << from.x << ", " << from.y << ") -> ("
+                 << to.x << ", " << to.y << ")\n";
 
             // Trace the face this half-edge belongs to
             vector<Point> facePoints;
@@ -83,18 +70,30 @@ set<AtomicEnclosure> findAtomicEnclosures(const set<Edge>& edges) {
 
                 // At cur_to, find cur_from in the sorted neighbor list
                 int idx = findNeighborIndex(cur_to, cur_from);
-                if (idx < 0) { valid = false; break; }
+                if (idx < 0) {
+                    cout << "    [!] Neighbor not found for ("
+                         << cur_to.x << ", " << cur_to.y << ") — aborting face\n";
+                    valid = false;
+                    break;
+                }
 
                 // Next in CW order = previous in CCW order
                 const vector<Point>& neighbors = adjacency.at(cur_to);
                 int nextIdx = (idx - 1 + (int)neighbors.size()) % (int)neighbors.size();
                 Point next_to = neighbors[nextIdx];
 
+                cout << "    Step: (" << cur_from.x << ", " << cur_from.y << ") -> ("
+                     << cur_to.x << ", " << cur_to.y << ") next -> ("
+                     << next_to.x << ", " << next_to.y << ")\n";
+
                 cur_from = cur_to;
                 cur_to = next_to;
             }
 
-            if (!valid || facePoints.size() < 3) continue;
+            if (!valid || facePoints.size() < 3) {
+                cout << "  [Skip] Invalid or too few points (" << facePoints.size() << ")\n";
+                continue;
+            }
 
             // Compute signed area to reject the outer (unbounded) face.
             // Interior faces are wound CW (negative signed area in standard coords).
@@ -107,10 +106,50 @@ set<AtomicEnclosure> findAtomicEnclosures(const set<Edge>& edges) {
             }
             signedArea /= 2.0;
 
-            if (signedArea <= 0.0) continue; // skip outer face (CW = negative area); keep interior faces (CCW = positive area)
+            cout << "  [Face] " << facePoints.size() << " vertices, signed area = " << signedArea << " -> ";
+
+            // Also reject degenerate faces: the face tracer can backtrack along
+            // dead-end (degree-1) edges producing a self-intersecting path with
+            // near-zero area. A real interior face needs meaningful area.
+            if (signedArea <= 1e-6) {
+                cout << "OUTER/DEGENERATE FACE (skipped)\n";
+                continue;
+            }
+
+            cout << "INTERIOR FACE (kept)\n";
+            cout << "  [Vertices]:";
+            for (const Point& p : facePoints)
+                cout << " (" << p.x << ", " << p.y << ")";
+            cout << "\n";
 
             set<Point> facePointSet(facePoints.begin(), facePoints.end());
             allAtomicEnclosures.insert(AtomicEnclosure(facePointSet, faceEdges));
+        }
+    }
+
+    cout << "[findAtomicEnclosures] Done — " << allAtomicEnclosures.size() << " enclosure(s) found\n\n";
+
+    return allAtomicEnclosures;
+}
+
+
+// ── Unused functions ──────────────────────────────────────────────────────────
+
+set<AtomicEnclosure> findAtomicEnclosures(const set<Point>& points, const set<Edge>& edges) {
+    unordered_map<Point, set<Edge>> pointToEdgeMap = createPointToEdgeMap(points, edges);
+    set<AtomicEnclosure> allAtomicEnclosures;
+
+    for(Point point : points){
+        set<Path> shortestPaths = findShortestPaths(pointToEdgeMap, point);
+
+        for(const Path& path : shortestPaths){
+            set<Point> pointsInPath;
+
+            for(const Edge& edge : path.edges){
+                pointsInPath.insert(edge.endpoints.begin(), edge.endpoints.end());
+            }
+
+            allAtomicEnclosures.insert(AtomicEnclosure(pointsInPath, path.edges));
         }
     }
 
@@ -200,47 +239,6 @@ void addEdgeToEdgeMap(const Edge edge, unordered_map<Point, set<Edge>>& pointToE
 
 void addPointToEdgeMap(const Point point, unordered_map<Point, set<Edge>>& pointToEdgeMap){
     pointToEdgeMap[point];
-}
-
-vector<Point> orderEnclosureBoundary(const AtomicEnclosure& enclosure) {
-    vector<Point> ordered;
-    if (enclosure.edges.empty()) return ordered;
-
-    unordered_map<Point, vector<Edge>> adjacency;
-    for (const Edge& edge : enclosure.edges) {
-        adjacency[edge.p1()].push_back(edge);
-        adjacency[edge.p2()].push_back(edge);
-    }
-
-    set<Edge> usedEdges;
-    Point start = *enclosure.points.begin();
-    Point current = start;
-    ordered.push_back(current);
-
-    while (ordered.size() <= enclosure.edges.size()) {
-        bool advanced = false;
-        for (const Edge& edge : adjacency[current]) {
-            if (usedEdges.count(edge)) continue;
-            usedEdges.insert(edge);
-            current = nearlyEqual(edge.p1(), current) ? edge.p2() : edge.p1();
-            advanced = true;
-            break;
-        }
-        if (!advanced || nearlyEqual(current, start)) break;
-        ordered.push_back(current);
-    }
-
-    return ordered;
-}
-
-vector<Point> fanTriangulate(const vector<Point>& boundary) {
-    vector<Point> triangles;
-    for (size_t i = 1; i + 1 < boundary.size(); ++i) {
-        triangles.push_back(boundary[0]);
-        triangles.push_back(boundary[i]);
-        triangles.push_back(boundary[i + 1]);
-    }
-    return triangles;
 }
 
 bool edgesShareCommonPoint(const Edge& e1, const Edge& e2, const Edge& e3){

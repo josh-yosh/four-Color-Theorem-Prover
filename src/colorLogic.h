@@ -22,8 +22,6 @@ void addEdgeToEdgeMap(const Edge edge, unordered_map<Point, set<Edge>>& pointToE
 void addPointToEdgeMap(const Point point, unordered_map<Point, set<Edge>>& pointToEdgeMap);
 bool edgeAlreadySearched(Edge edge, vector<Edge>& path);
 bool edgesShareCommonPoint(const Edge& e1, const Edge& e2, const Edge& e3);
-vector<Point> orderEnclosureBoundary(const AtomicEnclosure& enclosure);
-vector<Point> fanTriangulate(const vector<Point>& boundary);
 
 map<Edge, set<Edge>> createEdgeToEdgeMap(const set<Edge>& edges);
 void addEdgeToEdgeToEdgeMap(const Edge edge, map<Edge, set<Edge>>& edgeToEdgeMap);
