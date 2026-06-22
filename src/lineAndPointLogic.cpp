@@ -3,6 +3,7 @@
 #include <set>
 #include <vector>
 #include <limits>
+#include <cmath>
 #include "lineAndPointLogic.h"
 #include "Point.h"
 #include "Edge.h"

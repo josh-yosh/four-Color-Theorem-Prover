@@ -1,5 +1,6 @@
 #include "Point.h"
 #include <iostream>
+#include <cmath>
 
 bool nearlyEqual(const Point& a, const Point& b) {
     constexpr float eps = 1e-3f;
