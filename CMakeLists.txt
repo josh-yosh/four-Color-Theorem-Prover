@@ -30,6 +30,8 @@ add_library(PointLib
     src/lineAndPointLogic.cpp
     src/colorLogic.h
     src/colorLogic.cpp
+    src/mapColoring.h
+    src/mapColoring.cpp
     src/triangulation.h
     src/triangulation.cpp
     src/AtomicEnclosure.h
@@ -43,6 +45,7 @@ add_executable(my_executable
     src/buttonControls.cpp 
     src/lineAndPointLogic.cpp
     src/AtomicEnclosure.cpp
+    src/mapColoring.cpp
     src/Path.cpp
 )
 

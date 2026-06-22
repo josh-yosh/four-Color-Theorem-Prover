@@ -15,6 +15,7 @@
 #include "lineAndPointLogic.h"
 #include "AtomicEnclosure.h"
 #include "colorLogic.h"
+#include "mapColoring.h"
 #include "triangulation.h"
 using namespace std;
 
@@ -28,6 +29,7 @@ set<Point> currentConnection;
 set<Edge> allEdges;
 set<Point> intersectionPoints; // Store intersection points
 set<AtomicEnclosure> allAtomicEnclosures;
+map<AtomicEnclosure, int> enclosureColors; // Maps each face to its color index (0..3)
 unordered_map<Point, set<Edge>> pointToEdgeMap;
 bool isConnecting = false; // Track if we are in the process of connecting points
 
@@ -63,6 +65,14 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
         }
 
         allAtomicEnclosures = findAtomicEnclosures(allEdges);
+
+        // A new face may have been added, so recompute the 4-coloring.
+        if (colorMap(allAtomicEnclosures, enclosureColors)) {
+            cout << "[Coloring] Found a valid 4-coloring for "
+                 << allAtomicEnclosures.size() << " face(s)\n";
+        } else {
+            cout << "[Coloring] Failed to 4-color the map\n";
+        }
     } else if (!isConnecting){
         // If not connecting points, check for new point creation
         newPointClick(window, button, action, clickedPoints, allEdges);
@@ -236,7 +246,7 @@ struct Engine {
         glfwInit();
         glfwHintInit();
 
-        GLFWwindow* window = glfwCreateWindow(800, 600, "LearnOpenGL", NULL, NULL);
+        GLFWwindow* window = glfwCreateWindow(800, 600, "4 color Theorem Map Creator", NULL, NULL);
         if (failedGlfwWindow(window) == -1) return;
         
         //makes resizing the window possible and sets the viewport to the new dimensions
@@ -297,18 +307,41 @@ struct Engine {
             bool hasAtomicEnclosures = !allAtomicEnclosures.empty();
 
             if(hasAtomicEnclosures){
+                // The 4 colors of the map, indexed by the color assigned in enclosureColors.
+                static const float palette[NUM_COLORS][4] = {
+                    {0.90f, 0.30f, 0.30f, 1.0f}, // 0: red
+                    {0.30f, 0.60f, 0.90f, 1.0f}, // 1: blue
+                    {0.40f, 0.80f, 0.40f, 1.0f}, // 2: green
+                    {0.95f, 0.85f, 0.35f, 1.0f}, // 3: yellow
+                };
+
+                // Bucket every face's triangles by its assigned color so we can
+                // upload and draw all faces of one color in a single GPU call.
+                vector<Point> trianglesByColor[NUM_COLORS];
                 for (const AtomicEnclosure& atomicEnclosure : allAtomicEnclosures) {
+                    auto colorIt = enclosureColors.find(atomicEnclosure);
+                    if (colorIt == enclosureColors.end()) continue;
+                    int color = colorIt->second;
+
                     vector<Point> boundary = orderEnclosureBoundary(atomicEnclosure);
                     vector<Point> triangles = earClipTriangulate(boundary);
                     if (triangles.empty()) continue;
 
-                    glUniform4f(colorLoc, 0.0f, 1.0f, 0.0f, 1.0f);
+                    trianglesByColor[color].insert(trianglesByColor[color].end(),
+                                                   triangles.begin(), triangles.end());
+                }
 
-                    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+                // One draw call per color (4 total) instead of one per face.
+                glBindVertexArray(VAO);
+                glBindBuffer(GL_ARRAY_BUFFER, VBO);
+                for (int color = 0; color < NUM_COLORS; ++color) {
+                    const vector<Point>& triangles = trianglesByColor[color];
+                    if (triangles.empty()) continue;
+
+                    glUniform4f(colorLoc, palette[color][0], palette[color][1],
+                                          palette[color][2], palette[color][3]);
                     glBufferData(GL_ARRAY_BUFFER, triangles.size() * sizeof(Point), &triangles[0], GL_DYNAMIC_DRAW);
-                    glBindVertexArray(VAO);
                     glDrawArrays(GL_TRIANGLES, 0, triangles.size());
-
                 }
             }
 

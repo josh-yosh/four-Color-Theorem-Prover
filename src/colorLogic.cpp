@@ -13,7 +13,48 @@
 
 // ── Used functions ────────────────────────────────────────────────────────────
 
-set<AtomicEnclosure> findAtomicEnclosures(const set<Edge>& edges) {
+// Iteratively removes dead-end (degree-1) edges. A vertex touched by only one
+// edge can't be part of any face boundary, but the face tracer would still walk
+// out to it and back, producing a self-touching (non-simple) polygon that the
+// ear-clipping triangulator can't fill. Removing one dead-end can expose a new
+// one, so we keep trimming "leaves" until the set stabilises.
+static set<Edge> pruneDanglingEdges(const set<Edge>& edges) {
+    set<Edge> remaining = edges;
+
+    map<Point, int> degree;
+    for (const Edge& e : remaining) {
+        degree[e.p1()]++;
+        degree[e.p2()]++;
+    }
+
+    bool changed = true;
+    while (changed) {
+        changed = false;
+        for (auto it = remaining.begin(); it != remaining.end(); ) {
+            const Point& a = it->p1();
+            const Point& b = it->p2();
+            if (degree[a] == 1 || degree[b] == 1) {
+                degree[a]--;
+                degree[b]--;
+                it = remaining.erase(it);
+                changed = true;
+            } else {
+                ++it;
+            }
+        }
+    }
+
+    return remaining;
+}
+
+set<AtomicEnclosure> findAtomicEnclosures(const set<Edge>& allEdges) {
+    // Drop dead-end edges first so every traced face is a simple polygon.
+    set<Edge> edges = pruneDanglingEdges(allEdges);
+    if (edges.size() != allEdges.size()) {
+        cout << "[findAtomicEnclosures] Pruned " << (allEdges.size() - edges.size())
+             << " dead-end edge(s) before tracing\n";
+    }
+
     // Build adjacency: point -> list of neighbors sorted by angle (CCW)
     map<Point, vector<Point>> adjacency;
     for (const Edge& e : edges) {
